@@ -1,0 +1,53 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { MapPin, Sun, Moon } from 'lucide-react';
+import { useAppStore } from '@/store/app-store';
+
+export function TripHeader() {
+  const { activeTrip, theme, toggleTheme, currentTime } = useAppStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const day = mounted ? dayNames[currentTime.getDay()] : '';
+  const time = mounted
+    ? currentTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
+    : '';
+
+  return (
+    <header className="sticky top-0 z-50 backdrop-blur-xl bg-[var(--bg-primary)]/80 border-b border-white/[0.06]">
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-[var(--text-primary)]">
+            {activeTrip?.name ?? 'OpenNow'}
+          </h1>
+          <div className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>{activeTrip?.city ?? 'No trip selected'}</span>
+            <span className="mx-1">·</span>
+            <span>{day}</span>
+            <span className="mx-1">·</span>
+            <span className="font-mono">{time}</span>
+          </div>
+        </div>
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 text-[var(--text-secondary)]" />
+          ) : (
+            <Moon className="w-5 h-5 text-[var(--text-secondary)]" />
+          )}
+        </button>
+      </div>
+    </header>
+  );
+}
