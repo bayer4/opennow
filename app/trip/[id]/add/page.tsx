@@ -11,7 +11,7 @@ import { PlaceSearchResult, PlaceDetails, Place } from '@/types';
 export default function AddPlacePage() {
   const router = useRouter();
   const { data: session } = useSession();
-  const activeTrip = useAppStore((s) => s.activeTrip);
+  const activeCity = useAppStore((s) => s.activeCity);
   const addPlace = useAppStore((s) => s.addPlace);
   const isGuest = useAppStore((s) => s.isGuest);
   const [adding, setAdding] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export default function AddPlacePage() {
 
   const handleSelect = useCallback(
     async (result: PlaceSearchResult) => {
-      if (!activeTrip || added.has(result.placeId)) return;
+      if (!activeCity || added.has(result.placeId)) return;
       setAdding(result.placeId);
 
       try {
@@ -32,7 +32,7 @@ export default function AddPlacePage() {
           const details: PlaceDetails = await res.json();
           place = {
             id: details.placeId,
-            tripId: activeTrip.id,
+            cityId: activeCity.id,
             googlePlaceId: details.placeId,
             name: details.name,
             address: details.address,
@@ -43,29 +43,28 @@ export default function AddPlacePage() {
             rating: details.rating ?? undefined,
             priceLevel: details.priceLevel ?? undefined,
             photoReference: details.photoReference ?? undefined,
-            isPriority: false,
+            isStashed: false,
             isVisited: false,
-            sortOrder: activeTrip.places.length,
+            sortOrder: activeCity.places.length,
             hours: details.hours,
           };
         } else {
           place = {
             id: result.placeId,
-            tripId: activeTrip.id,
+            cityId: activeCity.id,
             googlePlaceId: result.placeId,
             name: result.name,
             address: result.address,
-            isPriority: false,
+            isStashed: false,
             isVisited: false,
-            sortOrder: activeTrip.places.length,
+            sortOrder: activeCity.places.length,
             hours: [],
           };
         }
 
-        // Persist to DB if authenticated
         if (session?.user && !isGuest) {
           try {
-            const dbRes = await fetch(`/api/trips/${activeTrip.id}/places`, {
+            const dbRes = await fetch(`/api/trips/${activeCity.id}/places`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(place),
@@ -74,9 +73,7 @@ export default function AddPlacePage() {
               const saved = await dbRes.json();
               place = { ...place, id: saved.id };
             }
-          } catch {
-            // DB save failed — place is still added to local state
-          }
+          } catch {}
         }
 
         addPlace(place);
@@ -85,19 +82,16 @@ export default function AddPlacePage() {
         setAdding(null);
       }
     },
-    [activeTrip, addPlace, added, session, isGuest]
+    [activeCity, addPlace, added, session, isGuest]
   );
 
   const locationBias =
-    activeTrip?.latitude && activeTrip?.longitude
-      ? { lat: activeTrip.latitude, lng: activeTrip.longitude }
+    activeCity?.latitude && activeCity?.longitude
+      ? { lat: activeCity.latitude, lng: activeCity.longitude }
       : undefined;
 
   return (
-    <div
-      className="min-h-dvh"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
-    >
+    <div className="min-h-dvh" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <header
         className="sticky top-0 z-40 backdrop-blur-xl py-3 px-4 flex items-center gap-3"
         style={{
@@ -119,9 +113,9 @@ export default function AddPlacePage() {
           >
             Add Places
           </h1>
-          {activeTrip && (
+          {activeCity && (
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {activeTrip.name}
+              {activeCity.name}
             </p>
           )}
         </div>
@@ -139,10 +133,8 @@ export default function AddPlacePage() {
               Added this session
             </p>
             <div className="flex flex-col gap-2">
-              {activeTrip?.places
-                .filter(
-                  (p) => p.googlePlaceId && added.has(p.googlePlaceId)
-                )
+              {activeCity?.places
+                .filter((p) => p.googlePlaceId && added.has(p.googlePlaceId))
                 .map((place) => (
                   <div
                     key={place.id}
@@ -166,10 +158,7 @@ export default function AddPlacePage() {
                       {place.address && (
                         <p
                           className="text-[11px] truncate"
-                          style={{
-                            color: 'var(--text-secondary)',
-                            opacity: 0.6,
-                          }}
+                          style={{ color: 'var(--text-secondary)', opacity: 0.6 }}
                         >
                           {place.address}
                         </p>
@@ -222,17 +211,6 @@ export default function AddPlacePage() {
             >
               Type a restaurant, cafe, or bar name. Hours are auto-fetched from Google Places.
             </p>
-            {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-              <p
-                className="text-[11px] mt-4 px-3 py-2 rounded-lg inline-block"
-                style={{
-                  backgroundColor: 'var(--status-closing-bg)',
-                  color: 'var(--status-closing)',
-                }}
-              >
-                Set GOOGLE_PLACES_API_KEY in .env.local to enable search
-              </p>
-            )}
           </div>
         )}
       </div>
@@ -245,14 +223,8 @@ export default function AddPlacePage() {
             border: '1px solid var(--border-color)',
           }}
         >
-          <Loader2
-            className="w-4 h-4 animate-spin"
-            style={{ color: 'var(--accent)' }}
-          />
-          <span
-            className="text-sm font-medium"
-            style={{ color: 'var(--text-primary)' }}
-          >
+          <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} />
+          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
             Fetching details...
           </span>
         </div>

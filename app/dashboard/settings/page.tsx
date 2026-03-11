@@ -8,8 +8,7 @@ import {
   Moon,
   Sun,
   Trash2,
-  Plane,
-  ChevronRight,
+  MapPin,
 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
@@ -53,10 +52,7 @@ function SettingsRow({
         {label}
       </span>
       {value && (
-        <span
-          className="text-[13px]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <span className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
           {value}
         </span>
       )}
@@ -67,14 +63,14 @@ function SettingsRow({
 
 export default function SettingsPage() {
   const { data: session } = useSession();
-  const { theme, toggleTheme, activeTrip } = useAppStore();
+  const { theme, toggleTheme, activeCity } = useAppStore();
   const router = useRouter();
 
   const isGuest = !session?.user;
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
-      {/* Profile section */}
+      {/* Profile */}
       <section
         className="rounded-2xl p-4 mb-4"
         style={{
@@ -115,12 +111,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Trips */}
+      {/* City */}
       <p
         className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
         style={{ color: 'var(--text-secondary)' }}
       >
-        Trips
+        Location
       </p>
       <section
         className="rounded-2xl overflow-hidden mb-4"
@@ -130,16 +126,9 @@ export default function SettingsPage() {
         }}
       >
         <SettingsRow
-          icon={Plane}
-          label="Manage Trips"
-          value={activeTrip?.name}
-          onClick={() => router.push('/trips')}
-          trailing={
-            <ChevronRight
-              className="w-4 h-4 shrink-0"
-              style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
-            />
-          }
+          icon={MapPin}
+          label="Current City"
+          value={activeCity?.name ?? 'Not detected'}
         />
       </section>
 
@@ -206,7 +195,7 @@ export default function SettingsPage() {
         className="text-[11px] text-center mt-8"
         style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
       >
-        OpenNow v0.1.0
+        OpenNow v0.2.0
       </p>
     </div>
   );

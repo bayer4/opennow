@@ -1,91 +1,112 @@
 import { create } from 'zustand';
-import { Trip, Place } from '@/types';
+import { City, Place } from '@/types';
 
 interface AppState {
-  activeTrip: Trip | null;
-  trips: Trip[];
+  activeCity: City | null;
   theme: 'dark' | 'light';
   showClosedPlaces: boolean;
+  showStashedPlaces: boolean;
   currentTime: Date;
   isLoading: boolean;
   isGuest: boolean;
+  detectedCityName: string | null;
 
-  setActiveTrip: (trip: Trip) => void;
-  setTrips: (trips: Trip[]) => void;
+  setActiveCity: (city: City) => void;
+  setDetectedCityName: (name: string) => void;
   setLoading: (loading: boolean) => void;
   setGuest: (guest: boolean) => void;
   addPlace: (place: Place) => void;
   removePlace: (placeId: string) => void;
-  updatePlace: (placeId: string, updates: Partial<Pick<Place, 'isPriority' | 'isVisited' | 'sortOrder'>>) => void;
-  addTrip: (trip: Trip) => void;
-  removeTripFromList: (tripId: string) => void;
+  stashPlace: (placeId: string) => void;
+  unstashPlace: (placeId: string) => void;
+  restockAllStashed: () => void;
   toggleTheme: () => void;
   toggleClosedPlaces: () => void;
+  toggleStashedPlaces: () => void;
   tick: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  activeTrip: null,
-  trips: [],
+  activeCity: null,
   theme: (typeof window !== 'undefined' && localStorage.getItem('opennow-theme') === 'light') ? 'light' : 'dark',
   showClosedPlaces: false,
+  showStashedPlaces: false,
   currentTime: new Date(),
   isLoading: true,
   isGuest: false,
+  detectedCityName: null,
 
-  setActiveTrip: (trip) => set({ activeTrip: trip, isLoading: false }),
-  setTrips: (trips) => set({ trips }),
+  setActiveCity: (city) => set({ activeCity: city, isLoading: false }),
+  setDetectedCityName: (name) => set({ detectedCityName: name }),
   setLoading: (loading) => set({ isLoading: loading }),
   setGuest: (guest) => set({ isGuest: guest }),
 
   addPlace: (place) => {
-    const trip = get().activeTrip;
-    if (!trip) return;
-    if (trip.places.some((p) => p.id === place.id)) return;
+    const city = get().activeCity;
+    if (!city) return;
+    if (city.places.some((p) => p.id === place.id)) return;
     set({
-      activeTrip: {
-        ...trip,
-        places: [...trip.places, { ...place, sortOrder: trip.places.length }],
+      activeCity: {
+        ...city,
+        places: [...city.places, { ...place, sortOrder: city.places.length }],
       },
     });
   },
 
   removePlace: (placeId) => {
-    const trip = get().activeTrip;
-    if (!trip) return;
+    const city = get().activeCity;
+    if (!city) return;
     set({
-      activeTrip: {
-        ...trip,
-        places: trip.places.filter((p) => p.id !== placeId),
+      activeCity: {
+        ...city,
+        places: city.places.filter((p) => p.id !== placeId),
       },
     });
   },
 
-  updatePlace: (placeId, updates) => {
-    const trip = get().activeTrip;
-    if (!trip) return;
+  stashPlace: (placeId) => {
+    const city = get().activeCity;
+    if (!city) return;
     set({
-      activeTrip: {
-        ...trip,
-        places: trip.places.map((p) =>
-          p.id === placeId ? { ...p, ...updates } : p
+      activeCity: {
+        ...city,
+        places: city.places.map((p) =>
+          p.id === placeId
+            ? { ...p, isStashed: true, stashedAt: new Date().toISOString() }
+            : p,
         ),
       },
     });
   },
 
-  addTrip: (trip) => {
-    set((state) => ({
-      trips: [trip, ...state.trips],
-    }));
+  unstashPlace: (placeId) => {
+    const city = get().activeCity;
+    if (!city) return;
+    set({
+      activeCity: {
+        ...city,
+        places: city.places.map((p) =>
+          p.id === placeId
+            ? { ...p, isStashed: false, stashedAt: undefined }
+            : p,
+        ),
+      },
+    });
   },
 
-  removeTripFromList: (tripId) => {
-    set((state) => ({
-      trips: state.trips.filter((t) => t.id !== tripId),
-      activeTrip:
-        state.activeTrip?.id === tripId ? null : state.activeTrip,
-    }));
+  restockAllStashed: () => {
+    const city = get().activeCity;
+    if (!city) return;
+    const hasStashed = city.places.some((p) => p.isStashed);
+    if (!hasStashed) return;
+    set({
+      activeCity: {
+        ...city,
+        places: city.places.map((p) =>
+          p.isStashed ? { ...p, isStashed: false, stashedAt: undefined } : p,
+        ),
+      },
+    });
   },
 
   toggleTheme: () =>
@@ -97,6 +118,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleClosedPlaces: () =>
     set((state) => ({ showClosedPlaces: !state.showClosedPlaces })),
+
+  toggleStashedPlaces: () =>
+    set((state) => ({ showStashedPlaces: !state.showStashedPlaces })),
 
   tick: () => {
     const now = new Date();
