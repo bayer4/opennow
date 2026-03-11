@@ -55,3 +55,24 @@ export interface PlaceWithStatus extends Place {
   statusInfo: StatusInfo;
   todayHours: OperatingHours | null;
 }
+
+export interface PlaceSearchResult {
+  placeId: string;
+  name: string;
+  address: string;
+  types: string[];
+}
+
+export interface PlaceDetails {
+  placeId: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+  cuisine: string;
+  rating: number | null;
+  priceLevel: number | null;
+  photoReference: string | null;
+  hours: OperatingHours[];
+}

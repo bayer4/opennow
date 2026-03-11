@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Trip } from '@/types';
+import { Trip, Place } from '@/types';
 
 interface AppState {
   activeTrip: Trip | null;
@@ -7,6 +7,8 @@ interface AppState {
   showClosedPlaces: boolean;
   currentTime: Date;
   setActiveTrip: (trip: Trip) => void;
+  addPlace: (place: Place) => void;
+  removePlace: (placeId: string) => void;
   toggleTheme: () => void;
   toggleClosedPlaces: () => void;
   tick: () => void;
@@ -17,15 +19,41 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: 'dark',
   showClosedPlaces: false,
   currentTime: new Date(),
+
   setActiveTrip: (trip) => set({ activeTrip: trip }),
+
+  addPlace: (place) => {
+    const trip = get().activeTrip;
+    if (!trip) return;
+    if (trip.places.some((p) => p.id === place.id)) return;
+    set({
+      activeTrip: {
+        ...trip,
+        places: [...trip.places, { ...place, sortOrder: trip.places.length }],
+      },
+    });
+  },
+
+  removePlace: (placeId) => {
+    const trip = get().activeTrip;
+    if (!trip) return;
+    set({
+      activeTrip: {
+        ...trip,
+        places: trip.places.filter((p) => p.id !== placeId),
+      },
+    });
+  },
+
   toggleTheme: () =>
     set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+
   toggleClosedPlaces: () =>
     set((state) => ({ showClosedPlaces: !state.showClosedPlaces })),
+
   tick: () => {
     const now = new Date();
     const prev = get().currentTime;
-    // Only update if the minute changed — avoids unnecessary re-renders
     if (
       now.getMinutes() !== prev.getMinutes() ||
       now.getHours() !== prev.getHours()

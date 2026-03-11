@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useRef, useCallback } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus, sortPlacesForToday } from '@/lib/status-engine';
 import { PlaceCard } from '@/components/PlaceCard';
@@ -64,9 +65,17 @@ export default function TodayPage() {
             place{openCount !== 1 ? 's' : ''} open now
           </span>
         </div>
-        <span className="text-xs text-[var(--text-secondary)]">
-          {activeTrip.places.length} total
-        </span>
+        <Link
+          href={`/trip/${activeTrip.id}/add`}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: '#fff',
+          }}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3">
