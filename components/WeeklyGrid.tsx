@@ -12,6 +12,7 @@ import { getDayOfWeek, formatDurationClock } from '@/lib/time-utils';
 interface WeeklyGridProps {
   places: Place[];
   currentTime: Date;
+
 }
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -186,6 +187,7 @@ export function WeeklyGrid({ places, currentTime }: WeeklyGridProps) {
               </td>
             </tr>
           ))}
+
         </tbody>
       </table>
     </div>
