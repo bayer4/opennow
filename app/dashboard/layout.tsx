@@ -15,10 +15,10 @@ export default function DashboardLayout({
 }) {
   const { data: session, status } = useSession();
   const setActiveTrip = useAppStore((s) => s.setActiveTrip);
+  const setTrips = useAppStore((s) => s.setTrips);
   const setLoading = useAppStore((s) => s.setLoading);
   const setGuest = useAppStore((s) => s.setGuest);
   const tick = useAppStore((s) => s.tick);
-  const activeTrip = useAppStore((s) => s.activeTrip);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -26,18 +26,21 @@ export default function DashboardLayout({
     if (!session?.user) {
       setGuest(true);
       setActiveTrip(chicagoTrip);
+      setTrips([chicagoTrip]);
       return;
     }
 
     setGuest(false);
     const userId = (session.user as Record<string, unknown>).id as string;
 
-    async function loadTrip() {
+    async function loadTrips() {
       setLoading(true);
       try {
         const res = await fetch('/api/trips');
         if (res.ok) {
           const trips = await res.json();
+          setTrips(trips);
+
           const active = trips.find((t: { isActive: boolean }) => t.isActive);
           if (active) {
             const tripRes = await fetch(`/api/trips/${active.id}`);
@@ -49,14 +52,14 @@ export default function DashboardLayout({
           }
         }
       } catch {
-        // DB not ready — fall back to seed data
+        // DB not ready
       }
-      // Fallback: use seed data but tag with userId
       setActiveTrip({ ...chicagoTrip, userId });
+      setTrips([{ ...chicagoTrip, userId }]);
     }
 
-    loadTrip();
-  }, [session, status, setActiveTrip, setLoading, setGuest]);
+    loadTrips();
+  }, [session, status, setActiveTrip, setTrips, setLoading, setGuest]);
 
   useEffect(() => {
     const interval = setInterval(tick, 60_000);

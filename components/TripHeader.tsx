@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { MapPin, Sun, Moon, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MapPin, Sun, Moon, User, ChevronDown } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
 export function TripHeader() {
   const { activeTrip, theme, toggleTheme, currentTime } = useAppStore();
   const { data: session } = useSession();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -25,10 +27,16 @@ export function TripHeader() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-[var(--bg-primary)]/80 border-b border-white/[0.06]">
       <div className="px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-[var(--text-primary)]">
-            {activeTrip?.name ?? 'OpenNow'}
-          </h1>
+        <button
+          onClick={() => router.push('/trips')}
+          className="text-left group"
+        >
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-lg font-bold text-[var(--text-primary)]">
+              {activeTrip?.name ?? 'OpenNow'}
+            </h1>
+            <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] opacity-60 group-hover:opacity-100 transition-opacity" />
+          </div>
           <div className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
             <MapPin className="w-3.5 h-3.5" />
             <span>{activeTrip?.city ?? 'No trip selected'}</span>
@@ -37,7 +45,7 @@ export function TripHeader() {
             <span className="mx-1">&middot;</span>
             <span className="font-mono">{time}</span>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}

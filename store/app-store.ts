@@ -3,6 +3,7 @@ import { Trip, Place } from '@/types';
 
 interface AppState {
   activeTrip: Trip | null;
+  trips: Trip[];
   theme: 'dark' | 'light';
   showClosedPlaces: boolean;
   currentTime: Date;
@@ -10,10 +11,13 @@ interface AppState {
   isGuest: boolean;
 
   setActiveTrip: (trip: Trip) => void;
+  setTrips: (trips: Trip[]) => void;
   setLoading: (loading: boolean) => void;
   setGuest: (guest: boolean) => void;
   addPlace: (place: Place) => void;
   removePlace: (placeId: string) => void;
+  addTrip: (trip: Trip) => void;
+  removeTripFromList: (tripId: string) => void;
   toggleTheme: () => void;
   toggleClosedPlaces: () => void;
   tick: () => void;
@@ -21,6 +25,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeTrip: null,
+  trips: [],
   theme: 'dark',
   showClosedPlaces: false,
   currentTime: new Date(),
@@ -28,6 +33,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isGuest: false,
 
   setActiveTrip: (trip) => set({ activeTrip: trip, isLoading: false }),
+  setTrips: (trips) => set({ trips }),
   setLoading: (loading) => set({ isLoading: loading }),
   setGuest: (guest) => set({ isGuest: guest }),
 
@@ -52,6 +58,20 @@ export const useAppStore = create<AppState>((set, get) => ({
         places: trip.places.filter((p) => p.id !== placeId),
       },
     });
+  },
+
+  addTrip: (trip) => {
+    set((state) => ({
+      trips: [trip, ...state.trips],
+    }));
+  },
+
+  removeTripFromList: (tripId) => {
+    set((state) => ({
+      trips: state.trips.filter((t) => t.id !== tripId),
+      activeTrip:
+        state.activeTrip?.id === tripId ? null : state.activeTrip,
+    }));
   },
 
   toggleTheme: () =>

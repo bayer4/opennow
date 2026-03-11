@@ -2,12 +2,72 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, LogOut, Moon, Sun, Trash2 } from 'lucide-react';
+import {
+  User,
+  LogOut,
+  Moon,
+  Sun,
+  Trash2,
+  Plane,
+  ChevronRight,
+} from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+
+function SettingsRow({
+  icon: Icon,
+  label,
+  value,
+  iconColor,
+  labelColor,
+  onClick,
+  trailing,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value?: string;
+  iconColor?: string;
+  labelColor?: string;
+  onClick?: () => void;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
+      style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.backgroundColor = 'transparent')
+      }
+    >
+      <Icon
+        className="w-5 h-5 shrink-0"
+        style={{ color: iconColor ?? 'var(--accent)' }}
+      />
+      <span
+        className="flex-1 text-left text-[14px]"
+        style={{ color: labelColor ?? 'var(--text-primary)' }}
+      >
+        {label}
+      </span>
+      {value && (
+        <span
+          className="text-[13px]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {value}
+        </span>
+      )}
+      {trailing}
+    </button>
+  );
+}
 
 export default function SettingsPage() {
   const { data: session } = useSession();
-  const { theme, toggleTheme } = useAppStore();
+  const { theme, toggleTheme, activeTrip } = useAppStore();
   const router = useRouter();
 
   const isGuest = !session?.user;
@@ -55,6 +115,34 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Trips */}
+      <p
+        className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        Trips
+      </p>
+      <section
+        className="rounded-2xl overflow-hidden mb-4"
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color-subtle)',
+        }}
+      >
+        <SettingsRow
+          icon={Plane}
+          label="Manage Trips"
+          value={activeTrip?.name}
+          onClick={() => router.push('/trips')}
+          trailing={
+            <ChevronRight
+              className="w-4 h-4 shrink-0"
+              style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
+            />
+          }
+        />
+      </section>
+
       {/* Preferences */}
       <p
         className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
@@ -69,37 +157,15 @@ export default function SettingsPage() {
           border: '1px solid var(--border-color-subtle)',
         }}
       >
-        <button
+        <SettingsRow
+          icon={theme === 'dark' ? Moon : Sun}
+          label="Appearance"
+          value={theme === 'dark' ? 'Dark' : 'Light'}
           onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.backgroundColor = 'transparent')
-          }
-        >
-          {theme === 'dark' ? (
-            <Moon className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-          ) : (
-            <Sun className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-          )}
-          <span
-            className="flex-1 text-left text-[14px]"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            Appearance
-          </span>
-          <span
-            className="text-[13px]"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {theme === 'dark' ? 'Dark' : 'Light'}
-          </span>
-        </button>
+        />
       </section>
 
-      {/* Account actions */}
+      {/* Account */}
       <p
         className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
         style={{ color: 'var(--text-secondary)' }}
@@ -113,70 +179,27 @@ export default function SettingsPage() {
           border: '1px solid var(--border-color-subtle)',
         }}
       >
-        {!isGuest && (
-          <button
+        {!isGuest ? (
+          <SettingsRow
+            icon={LogOut}
+            label="Sign Out"
+            iconColor="var(--status-closing)"
+            labelColor="var(--status-closing)"
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
-            style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = 'transparent')
-            }
-          >
-            <LogOut className="w-5 h-5" style={{ color: 'var(--status-closing)' }} />
-            <span
-              className="flex-1 text-left text-[14px]"
-              style={{ color: 'var(--status-closing)' }}
-            >
-              Sign Out
-            </span>
-          </button>
-        )}
-
-        {isGuest && (
-          <button
-            onClick={() => router.push('/')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
-            style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = 'transparent')
-            }
-          >
-            <User className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-            <span
-              className="flex-1 text-left text-[14px]"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              Sign in with Google
-            </span>
-          </button>
-        )}
-
-        <button
-          className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.backgroundColor = 'transparent')
-          }
-        >
-          <Trash2
-            className="w-5 h-5"
-            style={{ color: 'var(--status-closed)' }}
           />
-          <span
-            className="flex-1 text-left text-[14px]"
-            style={{ color: 'var(--status-closed)' }}
-          >
-            Clear All Data
-          </span>
-        </button>
+        ) : (
+          <SettingsRow
+            icon={User}
+            label="Sign in with Google"
+            onClick={() => router.push('/')}
+          />
+        )}
+        <SettingsRow
+          icon={Trash2}
+          label="Clear All Data"
+          iconColor="var(--status-closed)"
+          labelColor="var(--status-closed)"
+        />
       </section>
 
       <p
