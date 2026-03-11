@@ -25,50 +25,72 @@ export function TripHeader() {
     : '';
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-[var(--bg-primary)]/80 border-b border-white/[0.06]">
+    <header
+      className="sticky top-0 z-50 backdrop-blur-xl"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--bg-primary) 82%, transparent)',
+        borderBottom: '1px solid var(--divider)',
+      }}
+    >
       <div className="px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => router.push('/trips')}
-          className="text-left group"
+          className="text-left group min-w-0"
         >
           <div className="flex items-center gap-1.5">
-            <h1 className="text-lg font-bold text-[var(--text-primary)]">
+            <h1
+              className="text-[17px] font-bold truncate"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {activeTrip?.name ?? 'OpenNow'}
             </h1>
-            <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] opacity-60 group-hover:opacity-100 transition-opacity" />
+            <ChevronDown
+              className="w-4 h-4 shrink-0 transition-opacity duration-150"
+              style={{ color: 'var(--text-secondary)', opacity: 0.5 }}
+            />
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
-            <MapPin className="w-3.5 h-3.5" />
+          <div
+            className="flex items-center gap-1.5 text-[13px]"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
             <span>{activeTrip?.city ?? 'No trip selected'}</span>
-            <span className="mx-1">&middot;</span>
+            <span className="mx-0.5 opacity-40">&middot;</span>
             <span>{day}</span>
-            <span className="mx-1">&middot;</span>
-            <span className="font-mono">{time}</span>
+            <span className="mx-0.5 opacity-40">&middot;</span>
+            <span className="font-mono tabular-nums">{time}</span>
           </div>
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] transition-colors"
+            className="p-2 rounded-xl transition-colors duration-150"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+            }}
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-[var(--text-secondary)]" />
+              <Sun className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
             ) : (
-              <Moon className="w-5 h-5 text-[var(--text-secondary)]" />
+              <Moon className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
             )}
           </button>
           {session?.user?.image ? (
             <img
               src={session.user.image}
               alt=""
-              className="w-8 h-8 rounded-full ring-2 ring-[var(--accent)]/30"
+              className="w-8 h-8 rounded-full"
+              style={{ boxShadow: '0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent)' }}
               referrerPolicy="no-referrer"
             />
           ) : session?.user ? (
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-[var(--accent)]/30"
-              style={{ backgroundColor: 'var(--accent)' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: 'var(--accent)',
+                boxShadow: '0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent)',
+              }}
             >
               <User className="w-4 h-4 text-white" />
             </div>
