@@ -14,7 +14,7 @@ OpenNow is a Next.js 16 PWA (single service, not a monorepo) — a travel hours 
 
 ### Environment variables
 
-A `.env.local` file is required. At minimum it needs `NEXTAUTH_URL=http://localhost:3000`, `NEXTAUTH_SECRET` (any base64 string), and placeholder values for `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the Supabase client is instantiated at module level and will error without them). See `.env.local` for the current dev defaults.
+A `.env.local` file is required. At minimum it needs `NEXTAUTH_URL=http://localhost:3000`, `NEXTAUTH_SECRET` (any base64 string), and placeholder values for `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the Supabase client is instantiated at module level and will error without them). When real Supabase secrets are provided via environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), the `.env.local` file should reference them. The DB schema is in `supabase/migrations/001_initial_schema.sql` — tables must exist in the Supabase project. Check connectivity via `GET /api/setup` which returns `{"dbReady": true/false}`.
 
 ### Lint / Build / Test
 
