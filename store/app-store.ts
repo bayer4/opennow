@@ -16,6 +16,7 @@ interface AppState {
   setGuest: (guest: boolean) => void;
   addPlace: (place: Place) => void;
   removePlace: (placeId: string) => void;
+  updatePlace: (placeId: string, updates: Partial<Pick<Place, 'isPriority' | 'isVisited' | 'sortOrder'>>) => void;
   addTrip: (trip: Trip) => void;
   removeTripFromList: (tripId: string) => void;
   toggleTheme: () => void;
@@ -56,6 +57,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeTrip: {
         ...trip,
         places: trip.places.filter((p) => p.id !== placeId),
+      },
+    });
+  },
+
+  updatePlace: (placeId, updates) => {
+    const trip = get().activeTrip;
+    if (!trip) return;
+    set({
+      activeTrip: {
+        ...trip,
+        places: trip.places.map((p) =>
+          p.id === placeId ? { ...p, ...updates } : p
+        ),
       },
     });
   },
