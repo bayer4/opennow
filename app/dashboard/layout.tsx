@@ -25,13 +25,22 @@ export default function DashboardLayout({
 
     if (!session?.user) {
       setGuest(true);
-      setActiveTrip(chicagoTrip);
-      setTrips([chicagoTrip]);
+      const { activeTrip } = useAppStore.getState();
+      if (!activeTrip) {
+        setActiveTrip(chicagoTrip);
+        setTrips([chicagoTrip]);
+      }
       return;
     }
 
     setGuest(false);
     const userId = (session.user as Record<string, unknown>).id as string;
+
+    const { activeTrip: existing } = useAppStore.getState();
+    if (existing) {
+      setLoading(false);
+      return;
+    }
 
     async function loadTrips() {
       setLoading(true);
