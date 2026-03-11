@@ -55,7 +55,7 @@ export default function TodayPage() {
   ).length;
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-5">
       <div className="flex items-center justify-between mb-4">
         <div>
           <span className="text-2xl font-bold text-[var(--text-primary)]">

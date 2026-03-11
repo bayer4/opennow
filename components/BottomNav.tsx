@@ -15,8 +15,14 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl bg-[var(--bg-primary)]/80 border-t border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around h-16">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--bg-primary) 82%, transparent)',
+        borderTop: '1px solid var(--divider)',
+      }}
+    >
+      <div className="flex items-center justify-around h-14">
         {tabs.map((tab) => {
           const isActive =
             tab.href === '/dashboard'
@@ -28,14 +34,19 @@ export function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
-                isActive
-                  ? 'text-[var(--accent)]'
-                  : 'text-[var(--text-secondary)]'
-              }`}
+              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all duration-200 ease-out"
+              style={{
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                opacity: isActive ? 1 : 0.7,
+              }}
             >
-              <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <Icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.5 : 1.8} />
+              <span
+                className="text-[10px] leading-tight"
+                style={{ fontWeight: isActive ? 600 : 500 }}
+              >
+                {tab.label}
+              </span>
             </Link>
           );
         })}

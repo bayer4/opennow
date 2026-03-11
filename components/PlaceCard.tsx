@@ -31,12 +31,16 @@ export const PlaceCard = memo(function PlaceCard({ place }: PlaceCardProps) {
     <div
       className={`
         place-card relative rounded-2xl p-4
-        bg-[var(--bg-card)]
-        border border-white/[0.06]
         transition-transform transition-colors duration-150 ease-out
-        active:scale-[0.98] active:bg-[var(--bg-card-hover)]
-        ${isUrgent ? 'ring-1 ring-[var(--status-closing)]/30' : ''}
+        active:scale-[0.98]
       `}
+      style={{
+        backgroundColor: 'var(--bg-card)',
+        border: `1px solid var(--divider)`,
+        ...(isUrgent
+          ? { boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(--status-closing) 25%, transparent)` }
+          : {}),
+      }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

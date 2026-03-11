@@ -102,7 +102,7 @@ export default function AddPlacePage() {
         className="sticky top-0 z-40 backdrop-blur-xl py-3 px-4 flex items-center gap-3"
         style={{
           backgroundColor: 'color-mix(in srgb, var(--bg-primary) 80%, transparent)',
-          borderBottom: '1px solid var(--border-color-subtle)',
+          borderBottom: '1px solid var(--divider)',
         }}
       >
         <button
@@ -114,7 +114,7 @@ export default function AddPlacePage() {
         </button>
         <div>
           <h1
-            className="text-base font-semibold"
+            className="text-[17px] font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
             Add Places
@@ -127,7 +127,7 @@ export default function AddPlacePage() {
         </div>
       </header>
 
-      <div className="px-4 py-4">
+      <div className="px-4 py-5">
         <PlaceSearch locationBias={locationBias} onSelect={handleSelect} />
 
         {added.size > 0 && (
