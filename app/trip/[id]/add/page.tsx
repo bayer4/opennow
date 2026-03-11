@@ -2,15 +2,18 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Check, MapPin, Loader2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { ArrowLeft, Check, MapPin, Loader2 } from 'lucide-react';
 import { PlaceSearch } from '@/components/PlaceSearch';
 import { useAppStore } from '@/store/app-store';
 import { PlaceSearchResult, PlaceDetails, Place } from '@/types';
 
 export default function AddPlacePage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const activeTrip = useAppStore((s) => s.activeTrip);
   const addPlace = useAppStore((s) => s.addPlace);
+  const isGuest = useAppStore((s) => s.isGuest);
   const [adding, setAdding] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
 
@@ -46,7 +49,6 @@ export default function AddPlacePage() {
             hours: details.hours,
           };
         } else {
-          // Fallback: add with basic info, no hours
           place = {
             id: result.placeId,
             tripId: activeTrip.id,
@@ -60,13 +62,30 @@ export default function AddPlacePage() {
           };
         }
 
+        // Persist to DB if authenticated
+        if (session?.user && !isGuest) {
+          try {
+            const dbRes = await fetch(`/api/trips/${activeTrip.id}/places`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(place),
+            });
+            if (dbRes.ok) {
+              const saved = await dbRes.json();
+              place = { ...place, id: saved.id };
+            }
+          } catch {
+            // DB save failed — place is still added to local state
+          }
+        }
+
         addPlace(place);
         setAdded((prev) => new Set(prev).add(result.placeId));
       } finally {
         setAdding(null);
       }
     },
-    [activeTrip, addPlace, added]
+    [activeTrip, addPlace, added, session, isGuest]
   );
 
   const locationBias =
@@ -74,16 +93,11 @@ export default function AddPlacePage() {
       ? { lat: activeTrip.latitude, lng: activeTrip.longitude }
       : undefined;
 
-  const existingIds = new Set(
-    activeTrip?.places.map((p) => p.googlePlaceId).filter(Boolean)
-  );
-
   return (
     <div
       className="min-h-dvh"
       style={{ backgroundColor: 'var(--bg-primary)' }}
     >
-      {/* Header */}
       <header
         className="sticky top-0 z-40 backdrop-blur-xl py-3 px-4 flex items-center gap-3"
         style={{
@@ -116,7 +130,6 @@ export default function AddPlacePage() {
       <div className="px-4 py-4">
         <PlaceSearch locationBias={locationBias} onSelect={handleSelect} />
 
-        {/* Recently added feedback */}
         {added.size > 0 && (
           <div className="mt-4">
             <p
@@ -189,7 +202,6 @@ export default function AddPlacePage() {
           </div>
         )}
 
-        {/* Empty state / API key hint */}
         {added.size === 0 && (
           <div className="mt-12 text-center px-4">
             <div
@@ -225,7 +237,6 @@ export default function AddPlacePage() {
         )}
       </div>
 
-      {/* Floating add count indicator */}
       {adding && (
         <div
           className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg"

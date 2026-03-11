@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { TripHeader } from '@/components/TripHeader';
 import { BottomNav } from '@/components/BottomNav';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -12,14 +13,51 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { data: session, status } = useSession();
   const setActiveTrip = useAppStore((s) => s.setActiveTrip);
+  const setLoading = useAppStore((s) => s.setLoading);
+  const setGuest = useAppStore((s) => s.setGuest);
   const tick = useAppStore((s) => s.tick);
+  const activeTrip = useAppStore((s) => s.activeTrip);
 
   useEffect(() => {
-    setActiveTrip(chicagoTrip);
-  }, [setActiveTrip]);
+    if (status === 'loading') return;
 
-  // Tick every 60 seconds to keep times fresh
+    if (!session?.user) {
+      setGuest(true);
+      setActiveTrip(chicagoTrip);
+      return;
+    }
+
+    setGuest(false);
+    const userId = (session.user as Record<string, unknown>).id as string;
+
+    async function loadTrip() {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/trips');
+        if (res.ok) {
+          const trips = await res.json();
+          const active = trips.find((t: { isActive: boolean }) => t.isActive);
+          if (active) {
+            const tripRes = await fetch(`/api/trips/${active.id}`);
+            if (tripRes.ok) {
+              const trip = await tripRes.json();
+              setActiveTrip(trip);
+              return;
+            }
+          }
+        }
+      } catch {
+        // DB not ready — fall back to seed data
+      }
+      // Fallback: use seed data but tag with userId
+      setActiveTrip({ ...chicagoTrip, userId });
+    }
+
+    loadTrip();
+  }, [session, status, setActiveTrip, setLoading, setGuest]);
+
   useEffect(() => {
     const interval = setInterval(tick, 60_000);
     return () => clearInterval(interval);

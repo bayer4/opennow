@@ -6,7 +6,12 @@ interface AppState {
   theme: 'dark' | 'light';
   showClosedPlaces: boolean;
   currentTime: Date;
+  isLoading: boolean;
+  isGuest: boolean;
+
   setActiveTrip: (trip: Trip) => void;
+  setLoading: (loading: boolean) => void;
+  setGuest: (guest: boolean) => void;
   addPlace: (place: Place) => void;
   removePlace: (placeId: string) => void;
   toggleTheme: () => void;
@@ -19,8 +24,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: 'dark',
   showClosedPlaces: false,
   currentTime: new Date(),
+  isLoading: true,
+  isGuest: false,
 
-  setActiveTrip: (trip) => set({ activeTrip: trip }),
+  setActiveTrip: (trip) => set({ activeTrip: trip, isLoading: false }),
+  setLoading: (loading) => set({ isLoading: loading }),
+  setGuest: (guest) => set({ isGuest: guest }),
 
   addPlace: (place) => {
     const trip = get().activeTrip;
