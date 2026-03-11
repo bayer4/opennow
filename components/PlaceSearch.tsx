@@ -15,7 +15,7 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchResults = useCallback(
     async (q: string) => {

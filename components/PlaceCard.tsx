@@ -1,11 +1,12 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Star, MapPin, ChevronRight } from 'lucide-react';
 import { PlaceWithStatus } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { TimeLeft } from './TimeLeft';
 import { formatTime12h } from '@/lib/time-utils';
+import { useAppStore } from '@/store/app-store';
 
 interface PlaceCardProps {
   place: PlaceWithStatus;
@@ -25,7 +26,23 @@ const priceLabels: Record<number, string> = {
 };
 
 export const PlaceCard = memo(function PlaceCard({ place }: PlaceCardProps) {
+  const updatePlace = useAppStore((s) => s.updatePlace);
+  const isGuest = useAppStore((s) => s.isGuest);
   const isUrgent = place.statusInfo.status === 'closing_soon';
+
+  const handleTogglePriority = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newPriority = !place.isPriority;
+    updatePlace(place.id, { isPriority: newPriority });
+
+    if (!isGuest) {
+      fetch(`/api/places/${place.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPriority: newPriority }),
+      }).catch(() => {});
+    }
+  }, [place.id, place.isPriority, updatePlace, isGuest]);
 
   return (
     <div
@@ -48,9 +65,20 @@ export const PlaceCard = memo(function PlaceCard({ place }: PlaceCardProps) {
             <h3 className="text-lg font-semibold text-[var(--text-primary)] truncate">
               {place.name}
             </h3>
-            {place.isPriority && (
-              <Star className="w-4 h-4 text-[var(--accent)] fill-[var(--accent)] shrink-0" />
-            )}
+            <button
+              onClick={handleTogglePriority}
+              className="p-1 -m-1 shrink-0 transition-opacity duration-100"
+              aria-label={place.isPriority ? 'Remove priority' : 'Mark as priority'}
+            >
+              <Star
+                className="w-4 h-4"
+                style={
+                  place.isPriority
+                    ? { color: 'var(--accent)', fill: 'var(--accent)' }
+                    : { color: 'var(--text-secondary)', opacity: 0.3 }
+                }
+              />
+            </button>
           </div>
 
           <div className="flex items-center gap-2 mb-2">
@@ -93,9 +121,9 @@ export const PlaceCard = memo(function PlaceCard({ place }: PlaceCardProps) {
     </div>
   );
 }, (prev, next) => {
-  // Only re-render if the status or time-left text actually changed
   return (
     prev.place.id === next.place.id &&
+    prev.place.isPriority === next.place.isPriority &&
     prev.place.statusInfo.status === next.place.statusInfo.status &&
     prev.place.statusInfo.timeLeft === next.place.statusInfo.timeLeft &&
     prev.place.statusInfo.opensIn === next.place.statusInfo.opensIn

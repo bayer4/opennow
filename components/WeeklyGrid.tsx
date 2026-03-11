@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Star } from 'lucide-react';
 import { Place, PlaceStatus } from '@/types';
 import {
@@ -9,6 +9,7 @@ import {
   getMinutesRemaining,
 } from '@/lib/status-engine';
 import { getDayOfWeek, formatDurationClock } from '@/lib/time-utils';
+import { useAppStore } from '@/store/app-store';
 
 interface WeeklyGridProps {
   places: Place[];
@@ -31,6 +32,22 @@ export function WeeklyGrid({ places, currentTime }: WeeklyGridProps) {
   const todayMarkerRef = useRef<HTMLTableCellElement>(null);
   const today = getDayOfWeek(currentTime);
   const todayIdx = DAY_COLUMNS.indexOf(today as (typeof DAY_COLUMNS)[number]);
+  const updatePlace = useAppStore((s) => s.updatePlace);
+  const isGuest = useAppStore((s) => s.isGuest);
+
+  const handleTogglePriority = useCallback((e: React.MouseEvent, placeId: string, currentPriority: boolean) => {
+    e.stopPropagation();
+    const newPriority = !currentPriority;
+    updatePlace(placeId, { isPriority: newPriority });
+
+    if (!isGuest) {
+      fetch(`/api/places/${placeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPriority: newPriority }),
+      }).catch(() => {});
+    }
+  }, [updatePlace, isGuest]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -130,12 +147,20 @@ export function WeeklyGrid({ places, currentTime }: WeeklyGridProps) {
                   >
                     {place.name}
                   </span>
-                  {place.isPriority && (
+                  <button
+                    onClick={(e) => handleTogglePriority(e, place.id, place.isPriority)}
+                    className="p-0.5 -m-0.5 shrink-0"
+                    aria-label={place.isPriority ? 'Remove priority' : 'Mark as priority'}
+                  >
                     <Star
-                      className="w-2.5 h-2.5 shrink-0"
-                      style={{ color: 'var(--accent)', fill: 'var(--accent)' }}
+                      className="w-2.5 h-2.5"
+                      style={
+                        place.isPriority
+                          ? { color: 'var(--accent)', fill: 'var(--accent)' }
+                          : { color: 'var(--text-secondary)', opacity: 0.25 }
+                      }
                     />
-                  )}
+                  </button>
                 </div>
               </td>
 
