@@ -16,7 +16,7 @@ export default function WeekPage() {
   }
 
   return (
-    <div className="py-3">
+    <div className="py-5">
       <WeeklyGrid places={activeTrip.places} currentTime={currentTime} />
     </div>
   );

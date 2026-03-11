@@ -70,7 +70,7 @@ export default function DashboardLayout({
     <ThemeProvider>
       <div className="min-h-dvh flex flex-col bg-[var(--bg-primary)]">
         <TripHeader />
-        <main className="flex-1 pb-20">{children}</main>
+        <main className="flex-1 pb-16 page-transition">{children}</main>
         <BottomNav />
       </div>
     </ThemeProvider>

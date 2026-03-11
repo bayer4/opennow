@@ -26,7 +26,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   activeTrip: null,
   trips: [],
-  theme: 'dark',
+  theme: (typeof window !== 'undefined' && localStorage.getItem('opennow-theme') === 'light') ? 'light' : 'dark',
   showClosedPlaces: false,
   currentTime: new Date(),
   isLoading: true,
@@ -75,7 +75,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleTheme: () =>
-    set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+    set((state) => {
+      const next = state.theme === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('opennow-theme', next); } catch {}
+      return { theme: next };
+    }),
 
   toggleClosedPlaces: () =>
     set((state) => ({ showClosedPlaces: !state.showClosedPlaces })),
