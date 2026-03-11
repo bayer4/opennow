@@ -1,39 +1,24 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useAppStore } from '@/store/app-store';
-import { enrichPlaceWithStatus } from '@/lib/status-engine';
-import { MapView } from '@/components/MapView';
+import { Map } from 'lucide-react';
 
 export default function MapPage() {
-  const activeTrip = useAppStore((s) => s.activeTrip);
-  const currentTime = useAppStore((s) => s.currentTime);
-  const theme = useAppStore((s) => s.theme);
-
-  const enrichedPlaces = useMemo(() => {
-    if (!activeTrip) return [];
-    return activeTrip.places.map((p) => enrichPlaceWithStatus(p, currentTime));
-  }, [activeTrip, currentTime]);
-
-  const center = useMemo(
-    () => ({
-      lat: activeTrip?.latitude ?? 41.8781,
-      lng: activeTrip?.longitude ?? -87.6298,
-    }),
-    [activeTrip?.latitude, activeTrip?.longitude],
-  );
-
-  if (!activeTrip) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <p className="text-[var(--text-secondary)]">Loading trip…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-[calc(100dvh-9rem)]">
-      <MapView places={enrichedPlaces} center={center} isDark={theme === 'dark'} />
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center px-6">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ backgroundColor: 'var(--bg-card)' }}
+        >
+          <Map className="w-7 h-7" style={{ color: 'var(--accent)' }} />
+        </div>
+        <p className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+          Map View
+        </p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Coming soon
+        </p>
+      </div>
     </div>
   );
 }

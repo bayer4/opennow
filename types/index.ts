@@ -16,12 +16,12 @@ export interface OperatingHours {
   openTime: string | null; // "HH:MM" format, null if closed
   closeTime: string | null;
   isClosed: boolean;
-  isOvernight: boolean; // for places closing after midnight
+  isOvernight: boolean;
 }
 
 export interface Place {
   id: string;
-  tripId: string;
+  cityId: string;
   googlePlaceId?: string;
   name: string;
   address?: string;
@@ -32,12 +32,27 @@ export interface Place {
   rating?: number;
   priceLevel?: number;
   photoReference?: string;
-  isPriority: boolean;
+  isStashed: boolean;
+  stashedAt?: string; // ISO timestamp of when it was stashed
   isVisited: boolean;
   sortOrder: number;
   hours: OperatingHours[];
+
+  /** @deprecated kept for backward compat during migration */
+  tripId?: string;
+  isPriority?: boolean;
 }
 
+export interface City {
+  id: string;
+  userId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  places: Place[];
+}
+
+/** @deprecated — use City instead. Kept for seed data compat. */
 export interface Trip {
   id: string;
   userId: string;
