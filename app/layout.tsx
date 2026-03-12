@@ -13,34 +13,57 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const APP_TITLE = 'OpenNow';
+const APP_DESCRIPTION =
+  "Know what's open right now, wherever you are. A slim wallet for the places you want to try.";
+const OG_IMAGE = '/og-image.png';
+
 export const metadata: Metadata = {
-  title: 'OpenNow',
-  description: 'See which saved places are open right now',
+  title: APP_TITLE,
+  description: APP_DESCRIPTION,
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.svg',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
     apple: '/icons/apple-touch-icon.svg',
+  },
+  openGraph: {
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    siteName: APP_TITLE,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: APP_TITLE }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: APP_TITLE,
+    description: APP_DESCRIPTION,
+    images: [OG_IMAGE],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'OpenNow',
+    title: APP_TITLE,
     startupImage: [
       {
         url: '/icons/icon-512.svg',
-        media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
+        media:
+          '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
       },
       {
         url: '/icons/icon-512.svg',
-        media: '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)',
+        media:
+          '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)',
       },
       {
         url: '/icons/icon-512.svg',
-        media: '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
+        media:
+          '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
       },
       {
         url: '/icons/icon-512.svg',
-        media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
+        media:
+          '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
       },
     ],
   },
