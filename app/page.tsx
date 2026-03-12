@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Clock, Zap } from 'lucide-react';
+import { MapPin, Clock, ListChecks } from 'lucide-react';
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -43,39 +43,39 @@ export default function LandingPage() {
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
           style={{ backgroundColor: 'var(--accent)' }}
         >
-          <Clock className="w-8 h-8 text-white" />
+          <MapPin className="w-8 h-8 text-white" />
         </div>
 
         <h1
-          className="text-3xl font-bold mb-2"
+          className="text-3xl font-bold mb-3"
           style={{ color: 'var(--text-primary)' }}
         >
           OpenNow
         </h1>
         <p
-          className="text-center text-sm leading-relaxed max-w-[280px] mb-10"
+          className="text-center text-[15px] leading-relaxed max-w-[300px] mb-10"
           style={{ color: 'var(--text-secondary)' }}
         >
-          Track what&apos;s open right now in any city.
+          Your shortlist of places to try&mdash;with
+          live hours so you always know what&apos;s open.
         </p>
 
-        {/* Features */}
         <div className="w-full max-w-[300px] flex flex-col gap-3 mb-10">
           {[
             {
+              icon: ListChecks,
+              label: 'Keep a running list',
+              sub: 'Add spots you want to hit in any city',
+            },
+            {
               icon: Clock,
-              label: 'Live open/closed status',
-              sub: 'Know what\'s open at a glance',
+              label: 'See what\u2019s open now',
+              sub: 'Live hours. One glance. No Googling.',
             },
             {
               icon: MapPin,
-              label: 'Works in any city',
-              sub: 'Auto-detects where you are',
-            },
-            {
-              icon: Zap,
-              label: 'Closing-soon alerts',
-              sub: 'Never miss last call again',
+              label: 'Works wherever you are',
+              sub: 'Detects your city automatically',
             },
           ].map((f) => (
             <div
@@ -155,7 +155,7 @@ export default function LandingPage() {
             className="text-[11px] text-center mt-1"
             style={{ color: 'var(--text-secondary)', opacity: 0.5 }}
           >
-            Guest data is stored locally on this device
+            Guest data stays on this device only
           </p>
         </div>
       </div>
