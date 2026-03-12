@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { ChevronDown, ChevronUp, Plus, Archive, Check, MapPin } from 'lucide-react';
@@ -22,11 +22,13 @@ export default function TodayPage() {
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [sessionAddedIds, setSessionAddedIds] = useState<Set<string>>(new Set());
-  const [hasAddedBefore, setHasAddedBefore] = useState(true);
-
-  useEffect(() => {
-    setHasAddedBefore(localStorage.getItem('opennow-has-added-before') === '1');
-  }, []);
+  const [hasAddedBefore] = useState(() => {
+    try {
+      return localStorage.getItem('opennow-has-added-before') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const existingPlaceIds = useMemo(() => {
     const ids = new Set<string>();
