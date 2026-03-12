@@ -228,6 +228,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     set({ activeCity: updated });
     persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
+    try { localStorage.setItem('opennow-has-added-before', '1'); } catch {}
   },
 
   removePlace: (placeId) => {
