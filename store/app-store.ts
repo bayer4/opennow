@@ -1,6 +1,24 @@
 import { create } from 'zustand';
 import { City, Place } from '@/types';
 
+function persistPlace(
+  placeId: string,
+  data: Record<string, unknown>,
+  isGuest: boolean,
+) {
+  if (isGuest) return;
+  fetch(`/api/places/${placeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }).catch(() => {});
+}
+
+function deletePersistedPlace(placeId: string, isGuest: boolean) {
+  if (isGuest) return;
+  fetch(`/api/places/${placeId}`, { method: 'DELETE' }).catch(() => {});
+}
+
 interface AppState {
   activeCity: City | null;
   theme: 'dark' | 'light';
@@ -28,7 +46,11 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeCity: null,
-  theme: (typeof window !== 'undefined' && localStorage.getItem('opennow-theme') === 'light') ? 'light' : 'dark',
+  theme:
+    typeof window !== 'undefined' &&
+    localStorage.getItem('opennow-theme') === 'light'
+      ? 'light'
+      : 'dark',
   showClosedPlaces: false,
   showStashedPlaces: false,
   currentTime: new Date(),
@@ -56,6 +78,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   removePlace: (placeId) => {
     const city = get().activeCity;
     if (!city) return;
+    deletePersistedPlace(placeId, get().isGuest);
     set({
       activeCity: {
         ...city,
@@ -67,13 +90,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   stashPlace: (placeId) => {
     const city = get().activeCity;
     if (!city) return;
+    const stashedAt = new Date().toISOString();
+    persistPlace(placeId, { isStashed: true, stashedAt }, get().isGuest);
     set({
       activeCity: {
         ...city,
         places: city.places.map((p) =>
-          p.id === placeId
-            ? { ...p, isStashed: true, stashedAt: new Date().toISOString() }
-            : p,
+          p.id === placeId ? { ...p, isStashed: true, stashedAt } : p,
         ),
       },
     });
@@ -82,6 +105,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   unstashPlace: (placeId) => {
     const city = get().activeCity;
     if (!city) return;
+    persistPlace(
+      placeId,
+      { isStashed: false, stashedAt: null },
+      get().isGuest,
+    );
     set({
       activeCity: {
         ...city,
@@ -112,7 +140,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleTheme: () =>
     set((state) => {
       const next = state.theme === 'dark' ? 'light' : 'dark';
-      try { localStorage.setItem('opennow-theme', next); } catch {}
+      try {
+        localStorage.setItem('opennow-theme', next);
+      } catch {}
       return { theme: next };
     }),
 

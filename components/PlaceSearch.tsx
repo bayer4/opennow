@@ -1,19 +1,31 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2, Plus, Check } from 'lucide-react';
 import { PlaceSearchResult } from '@/types';
 
 interface PlaceSearchProps {
   locationBias?: { lat: number; lng: number };
-  onSelect: (result: PlaceSearchResult) => void;
+  cityName?: string;
+  addedIds: Set<string>;
+  addingId: string | null;
+  onAdd: (result: PlaceSearchResult) => void;
+  placeholder?: string;
+  autoFocus?: boolean;
 }
 
-export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
+export function PlaceSearch({
+  locationBias,
+  cityName,
+  addedIds,
+  addingId,
+  onAdd,
+  placeholder = 'Search restaurants, cafes, bars...',
+  autoFocus = false,
+}: PlaceSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PlaceSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -30,6 +42,9 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
           params.set('lat', String(locationBias.lat));
           params.set('lng', String(locationBias.lng));
         }
+        if (cityName) {
+          params.set('city', cityName);
+        }
         const res = await fetch(`/api/places/search?${params}`);
         if (res.ok) {
           const data = await res.json();
@@ -39,7 +54,7 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
         setLoading(false);
       }
     },
-    [locationBias]
+    [locationBias, cityName],
   );
 
   useEffect(() => {
@@ -52,23 +67,18 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
     return () => clearTimeout(debounceRef.current);
   }, [query, fetchResults]);
 
-  const handleSelect = (result: PlaceSearchResult) => {
-    onSelect(result);
-    setQuery('');
-    setResults([]);
-    inputRef.current?.blur();
-  };
-
   const handleClear = () => {
     setQuery('');
     setResults([]);
     inputRef.current?.focus();
   };
 
-  const showDropdown = focused && (results.length > 0 || loading);
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   return (
-    <div className="relative">
+    <div>
       <div
         className="flex items-center gap-2 rounded-xl px-4 py-3 transition-colors duration-150"
         style={{
@@ -85,9 +95,7 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 200)}
-          placeholder="Search restaurants, cafes, bars..."
+          placeholder={placeholder}
           className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-[var(--text-secondary)]/40"
           style={{ color: 'var(--text-primary)' }}
           autoComplete="off"
@@ -102,51 +110,104 @@ export function PlaceSearch({ locationBias, onSelect }: PlaceSearchProps) {
         )}
         {query && !loading && (
           <button onClick={handleClear} className="shrink-0 p-0.5">
-            <X className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            <X
+              className="w-4 h-4"
+              style={{ color: 'var(--text-secondary)' }}
+            />
           </button>
         )}
       </div>
 
-      {showDropdown && (
+      {loading && results.length === 0 && query.length >= 2 && (
         <div
-          className="absolute z-50 left-0 right-0 mt-2 rounded-xl overflow-hidden shadow-2xl"
+          className="mt-2 rounded-xl px-4 py-6 text-center text-sm"
           style={{
             backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
+            border: '1px solid var(--border-color-subtle)',
+            color: 'var(--text-secondary)',
           }}
         >
-          {loading && results.length === 0 && (
-            <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Searching...
-            </div>
-          )}
-          {results.map((result) => (
-            <button
-              key={result.placeId}
-              onClick={() => handleSelect(result)}
-              className="w-full text-left px-4 py-3 transition-colors duration-100"
-              style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = 'transparent')
-              }
-            >
-              <p
-                className="text-[14px] font-medium truncate"
-                style={{ color: 'var(--text-primary)' }}
+          Searching...
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div
+          className="mt-2 rounded-xl overflow-hidden"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color-subtle)',
+          }}
+        >
+          {results.map((result) => {
+            const isAdded = addedIds.has(result.placeId);
+            const isAdding = addingId === result.placeId;
+
+            return (
+              <div
+                key={result.placeId}
+                className="flex items-center gap-3 px-4 py-3"
+                style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
               >
-                {result.name}
-              </p>
-              <p
-                className="text-[12px] truncate mt-0.5"
-                style={{ color: 'var(--text-secondary)', opacity: 0.7 }}
-              >
-                {result.address}
-              </p>
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-[14px] font-medium truncate"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {result.name}
+                  </p>
+                  <p
+                    className="text-[12px] truncate mt-0.5"
+                    style={{ color: 'var(--text-secondary)', opacity: 0.7 }}
+                  >
+                    {result.address}
+                  </p>
+                </div>
+
+                {isAdded ? (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: 'var(--status-open-bg)' }}
+                  >
+                    <Check
+                      className="w-4 h-4"
+                      style={{ color: 'var(--status-open)' }}
+                    />
+                  </div>
+                ) : isAdding ? (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                    <Loader2
+                      className="w-4 h-4 animate-spin"
+                      style={{ color: 'var(--accent)' }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => onAdd(result)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-100 active:scale-90"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                    }}
+                  >
+                    <Plus className="w-4 h-4 text-white" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && query.length >= 2 && results.length === 0 && (
+        <div
+          className="mt-2 rounded-xl px-4 py-6 text-center text-sm"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-color-subtle)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          No results found
         </div>
       )}
     </div>

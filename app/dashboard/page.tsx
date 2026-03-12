@@ -1,20 +1,91 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Plus, Archive, MapPin } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { ChevronDown, ChevronUp, Plus, Archive, Check } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus, sortPlacesForToday } from '@/lib/status-engine';
 import { PlaceCard } from '@/components/PlaceCard';
-import { PlaceWithStatus } from '@/types';
+import { PlaceSearch } from '@/components/PlaceSearch';
+import { PlaceWithStatus, PlaceSearchResult, PlaceDetails, Place } from '@/types';
 
 export default function TodayPage() {
+  const { data: session } = useSession();
   const activeCity = useAppStore((s) => s.activeCity);
   const currentTime = useAppStore((s) => s.currentTime);
+  const addPlace = useAppStore((s) => s.addPlace);
+  const isGuest = useAppStore((s) => s.isGuest);
   const showClosedPlaces = useAppStore((s) => s.showClosedPlaces);
   const showStashedPlaces = useAppStore((s) => s.showStashedPlaces);
   const toggleClosedPlaces = useAppStore((s) => s.toggleClosedPlaces);
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+  const handleInlineAdd = useCallback(
+    async (result: PlaceSearchResult) => {
+      if (!activeCity || addedIds.has(result.placeId)) return;
+      setAddingId(result.placeId);
+      try {
+        const res = await fetch(
+          `/api/places/details?placeId=${encodeURIComponent(result.placeId)}`,
+        );
+        let place: Place;
+        if (res.ok) {
+          const details: PlaceDetails = await res.json();
+          place = {
+            id: details.placeId,
+            cityId: activeCity.id,
+            googlePlaceId: details.placeId,
+            name: details.name,
+            address: details.address,
+            latitude: details.latitude,
+            longitude: details.longitude,
+            category: details.category,
+            cuisine: details.cuisine,
+            rating: details.rating ?? undefined,
+            priceLevel: details.priceLevel ?? undefined,
+            photoReference: details.photoReference ?? undefined,
+            isStashed: false,
+            isVisited: false,
+            sortOrder: activeCity.places.length,
+            hours: details.hours,
+          };
+        } else {
+          place = {
+            id: result.placeId,
+            cityId: activeCity.id,
+            googlePlaceId: result.placeId,
+            name: result.name,
+            address: result.address,
+            isStashed: false,
+            isVisited: false,
+            sortOrder: activeCity.places.length,
+            hours: [],
+          };
+        }
+        if (session?.user && !isGuest) {
+          try {
+            const dbRes = await fetch(`/api/trips/${activeCity.id}/places`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(place),
+            });
+            if (dbRes.ok) {
+              const saved = await dbRes.json();
+              place = { ...place, id: saved.id };
+            }
+          } catch {}
+        }
+        addPlace(place);
+        setAddedIds((prev) => new Set(prev).add(result.placeId));
+      } finally {
+        setAddingId(null);
+      }
+    },
+    [activeCity, addPlace, addedIds, session, isGuest],
+  );
 
   const { activePlaces, closedPlaces, stashedPlaces } = useMemo(() => {
     if (!activeCity) return { activePlaces: [], closedPlaces: [], stashedPlaces: [] };
@@ -63,37 +134,42 @@ export default function TodayPage() {
 
   const allNonStashed = activePlaces.length + closedPlaces.length;
 
+  const locationBias =
+    activeCity.latitude && activeCity.longitude
+      ? { lat: activeCity.latitude, lng: activeCity.longitude }
+      : undefined;
+
   if (allNonStashed === 0 && stashedPlaces.length === 0) {
     return (
       <div className="px-4 py-5 max-w-[480px] mx-auto">
-        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-            style={{ backgroundColor: 'var(--bg-card)' }}
-          >
-            <MapPin className="w-8 h-8" style={{ color: 'var(--accent)' }} />
+        <p
+          className="text-sm mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Search for places to track in {activeCity.name}
+        </p>
+        <PlaceSearch
+          locationBias={locationBias}
+          cityName={activeCity.name}
+          addedIds={addedIds}
+          addingId={addingId}
+          onAdd={handleInlineAdd}
+          placeholder="Search restaurants, cafes, bars..."
+          autoFocus
+        />
+        {addedIds.size > 0 && (
+          <div className="flex items-center gap-2 mt-4">
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--status-open-bg)' }}
+            >
+              <Check className="w-3 h-3" style={{ color: 'var(--status-open)' }} />
+            </div>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Added {addedIds.size} place{addedIds.size !== 1 ? 's' : ''}
+            </span>
           </div>
-          <h2
-            className="text-lg font-semibold mb-2"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            No places in {activeCity.name} yet
-          </h2>
-          <p
-            className="text-sm leading-relaxed mb-6 max-w-[260px]"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Add your first restaurant, cafe, or bar to start tracking what&apos;s open.
-          </p>
-          <Link
-            href={`/trip/${activeCity.id}/add`}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-transform duration-100 active:scale-[0.97]"
-            style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-          >
-            <Plus className="w-4 h-4" />
-            Add Places
-          </Link>
-        </div>
+        )}
       </div>
     );
   }

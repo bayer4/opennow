@@ -1,5 +1,5 @@
 import { getServiceClient } from './supabase';
-import { Trip, Place, OperatingHours } from '@/types';
+import { City, Place, OperatingHours } from '@/types';
 
 const supabase = () => getServiceClient();
 
@@ -32,6 +32,8 @@ interface PlaceRow {
   price_level: number | null;
   photo_reference: string | null;
   is_priority: boolean;
+  is_stashed: boolean | null;
+  stashed_at: string | null;
   is_visited: boolean;
   sort_order: number;
   created_at: string;
@@ -49,17 +51,13 @@ interface HoursRow {
 
 // ─── Converters ───
 
-function tripRowToModel(row: TripRow, places: Place[] = []): Trip {
+function tripRowToCity(row: TripRow, places: Place[] = []): City {
   return {
     id: row.id,
     userId: row.user_id,
-    name: row.name,
-    city: row.city,
-    latitude: row.latitude ?? undefined,
-    longitude: row.longitude ?? undefined,
-    startDate: row.start_date ?? undefined,
-    endDate: row.end_date ?? undefined,
-    isActive: row.is_active,
+    name: row.city || row.name,
+    latitude: row.latitude ?? 0,
+    longitude: row.longitude ?? 0,
     places,
   };
 }
@@ -67,6 +65,7 @@ function tripRowToModel(row: TripRow, places: Place[] = []): Trip {
 function placeRowToModel(row: PlaceRow, hours: OperatingHours[] = []): Place {
   return {
     id: row.id,
+    cityId: row.trip_id,
     tripId: row.trip_id,
     googlePlaceId: row.google_place_id ?? undefined,
     name: row.name,
@@ -78,7 +77,8 @@ function placeRowToModel(row: PlaceRow, hours: OperatingHours[] = []): Place {
     rating: row.rating ?? undefined,
     priceLevel: row.price_level ?? undefined,
     photoReference: row.photo_reference ?? undefined,
-    isPriority: row.is_priority,
+    isStashed: row.is_stashed ?? row.is_priority ?? false,
+    stashedAt: row.stashed_at ?? undefined,
     isVisited: row.is_visited,
     sortOrder: row.sort_order,
     hours,
@@ -97,29 +97,9 @@ function hoursRowToModel(row: HoursRow): OperatingHours {
   };
 }
 
-// ─── Trips ───
+// ─── Internal: load places + hours for a trip ───
 
-export async function getTrips(userId: string): Promise<Trip[]> {
-  const { data: rows, error } = await supabase()
-    .from('trips')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return (rows as TripRow[]).map((r) => tripRowToModel(r));
-}
-
-export async function getTripWithPlaces(tripId: string): Promise<Trip | null> {
-  const { data: tripRow, error: tripErr } = await supabase()
-    .from('trips')
-    .select('*')
-    .eq('id', tripId)
-    .maybeSingle();
-
-  if (tripErr) throw tripErr;
-  if (!tripRow) return null;
-
+async function loadPlacesForTrip(tripId: string): Promise<Place[]> {
   const { data: placeRows, error: placesErr } = await supabase()
     .from('places')
     .select('*')
@@ -130,7 +110,7 @@ export async function getTripWithPlaces(tripId: string): Promise<Trip | null> {
 
   const placeIds = (placeRows as PlaceRow[]).map((p) => p.id);
 
-  let hoursMap = new Map<string, OperatingHours[]>();
+  const hoursMap = new Map<string, OperatingHours[]>();
   if (placeIds.length > 0) {
     const { data: hoursRows, error: hoursErr } = await supabase()
       .from('operating_hours')
@@ -146,14 +126,62 @@ export async function getTripWithPlaces(tripId: string): Promise<Trip | null> {
     }
   }
 
-  const places = (placeRows as PlaceRow[]).map((r) =>
-    placeRowToModel(r, hoursMap.get(r.id) ?? [])
+  return (placeRows as PlaceRow[]).map((r) =>
+    placeRowToModel(r, hoursMap.get(r.id) ?? []),
   );
-
-  return tripRowToModel(tripRow as TripRow, places);
 }
 
-export async function getActiveTrip(userId: string): Promise<Trip | null> {
+// ─── Cities (backed by the trips table) ───
+
+export async function getOrCreateCity(
+  userId: string,
+  cityName: string,
+  latitude?: number,
+  longitude?: number,
+): Promise<City> {
+  const { data: existing, error: findErr } = await supabase()
+    .from('trips')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('city', cityName)
+    .maybeSingle();
+
+  if (findErr) throw findErr;
+
+  let tripRow: TripRow;
+
+  if (existing) {
+    tripRow = existing as TripRow;
+    if (!tripRow.is_active) {
+      await supabase()
+        .from('trips')
+        .update({ is_active: true })
+        .eq('id', tripRow.id);
+      tripRow.is_active = true;
+    }
+  } else {
+    const { data: newRow, error: createErr } = await supabase()
+      .from('trips')
+      .insert({
+        user_id: userId,
+        name: cityName,
+        city: cityName,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (createErr) throw createErr;
+    tripRow = newRow as TripRow;
+  }
+
+  const places = await loadPlacesForTrip(tripRow.id);
+  return tripRowToCity(tripRow, places);
+}
+
+export async function getActiveCityForUser(userId: string): Promise<City | null> {
   const { data: tripRow, error } = await supabase()
     .from('trips')
     .select('*')
@@ -164,72 +192,21 @@ export async function getActiveTrip(userId: string): Promise<Trip | null> {
   if (error) throw error;
   if (!tripRow) return null;
 
-  return getTripWithPlaces((tripRow as TripRow).id);
-}
-
-export async function createTrip(
-  userId: string,
-  data: { name: string; city: string; latitude?: number; longitude?: number; startDate?: string; endDate?: string }
-): Promise<Trip> {
-  // Deactivate other trips first
-  await supabase()
-    .from('trips')
-    .update({ is_active: false })
-    .eq('user_id', userId);
-
-  const { data: row, error } = await supabase()
-    .from('trips')
-    .insert({
-      user_id: userId,
-      name: data.name,
-      city: data.city,
-      latitude: data.latitude ?? null,
-      longitude: data.longitude ?? null,
-      start_date: data.startDate ?? null,
-      end_date: data.endDate ?? null,
-      is_active: true,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return tripRowToModel(row as TripRow, []);
-}
-
-export async function updateTrip(
-  tripId: string,
-  data: Partial<{ name: string; city: string; isActive: boolean }>
-): Promise<Trip> {
-  const update: Record<string, unknown> = {};
-  if (data.name !== undefined) update.name = data.name;
-  if (data.city !== undefined) update.city = data.city;
-  if (data.isActive !== undefined) update.is_active = data.isActive;
-
-  const { data: row, error } = await supabase()
-    .from('trips')
-    .update(update)
-    .eq('id', tripId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return tripRowToModel(row as TripRow);
-}
-
-export async function deleteTrip(tripId: string): Promise<void> {
-  const { error } = await supabase().from('trips').delete().eq('id', tripId);
-  if (error) throw error;
+  const row = tripRow as TripRow;
+  const places = await loadPlacesForTrip(row.id);
+  return tripRowToCity(row, places);
 }
 
 // ─── Places ───
 
-export async function addPlaceToDB(
-  place: Place
-): Promise<Place> {
+export async function addPlaceToDB(place: Place): Promise<Place> {
+  const tripId = place.tripId || place.cityId;
+  if (!tripId) throw new Error('place must have cityId or tripId');
+
   const { data: row, error } = await supabase()
     .from('places')
     .insert({
-      trip_id: place.tripId,
+      trip_id: tripId,
       google_place_id: place.googlePlaceId ?? null,
       name: place.name,
       address: place.address ?? null,
@@ -240,7 +217,9 @@ export async function addPlaceToDB(
       rating: place.rating ?? null,
       price_level: place.priceLevel ?? null,
       photo_reference: place.photoReference ?? null,
-      is_priority: place.isPriority,
+      is_priority: false,
+      is_stashed: place.isStashed ?? false,
+      stashed_at: place.stashedAt ?? null,
       is_visited: place.isVisited,
       sort_order: place.sortOrder,
     })
@@ -276,10 +255,18 @@ export async function addPlaceToDB(
 
 export async function updatePlace(
   placeId: string,
-  data: Partial<{ isPriority: boolean; isVisited: boolean; sortOrder: number }>
+  data: Partial<{
+    isPriority: boolean;
+    isStashed: boolean;
+    stashedAt: string | null;
+    isVisited: boolean;
+    sortOrder: number;
+  }>,
 ): Promise<void> {
   const update: Record<string, unknown> = {};
   if (data.isPriority !== undefined) update.is_priority = data.isPriority;
+  if (data.isStashed !== undefined) update.is_stashed = data.isStashed;
+  if (data.stashedAt !== undefined) update.stashed_at = data.stashedAt;
   if (data.isVisited !== undefined) update.is_visited = data.isVisited;
   if (data.sortOrder !== undefined) update.sort_order = data.sortOrder;
 
@@ -294,6 +281,44 @@ export async function updatePlace(
 export async function deletePlace(placeId: string): Promise<void> {
   const { error } = await supabase().from('places').delete().eq('id', placeId);
   if (error) throw error;
+}
+
+export async function restockStashedPlaces(tripId: string): Promise<void> {
+  const { error } = await supabase()
+    .from('places')
+    .update({ is_stashed: false, stashed_at: null })
+    .eq('trip_id', tripId)
+    .eq('is_stashed', true);
+
+  if (error) throw error;
+}
+
+// ─── Legacy trip functions (used by setup/seed) ───
+
+export async function createTrip(
+  userId: string,
+  data: {
+    name: string;
+    city: string;
+    latitude?: number;
+    longitude?: number;
+  },
+) {
+  const { data: row, error } = await supabase()
+    .from('trips')
+    .insert({
+      user_id: userId,
+      name: data.name,
+      city: data.city,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { id: (row as TripRow).id };
 }
 
 // ─── Health check ───

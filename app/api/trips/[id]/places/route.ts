@@ -6,7 +6,7 @@ import { Place } from '@/types';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -19,6 +19,7 @@ export async function POST(
 
     const place: Place = {
       id: '',
+      cityId: tripId,
       tripId,
       googlePlaceId: body.googlePlaceId,
       name: body.name,
@@ -30,7 +31,7 @@ export async function POST(
       rating: body.rating,
       priceLevel: body.priceLevel,
       photoReference: body.photoReference,
-      isPriority: body.isPriority ?? false,
+      isStashed: body.isStashed ?? false,
       isVisited: body.isVisited ?? false,
       sortOrder: body.sortOrder ?? 0,
       hours: body.hours ?? [],

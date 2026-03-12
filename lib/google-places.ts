@@ -38,13 +38,15 @@ const TYPE_TO_CUISINE: Record<string, string> = {
  */
 export async function searchPlaces(
   query: string,
-  locationBias?: { lat: number; lng: number }
+  locationBias?: { lat: number; lng: number },
+  cityName?: string,
 ): Promise<PlaceSearchResult[]> {
   if (!API_KEY) return [];
 
+  const textQuery = cityName ? `${query} ${cityName}` : query;
+
   const body: Record<string, unknown> = {
-    textQuery: query,
-    includedType: 'restaurant',
+    textQuery,
     maxResultCount: 8,
   };
 
@@ -52,7 +54,7 @@ export async function searchPlaces(
     body.locationBias = {
       circle: {
         center: { latitude: locationBias.lat, longitude: locationBias.lng },
-        radius: 30000,
+        radius: 10000,
       },
     };
   }
