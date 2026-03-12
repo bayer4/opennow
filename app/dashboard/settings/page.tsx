@@ -14,9 +14,13 @@ import {
   Compass,
   ChevronRight,
   X,
+  Bug,
+  Lightbulb,
+  MessageCircle,
 } from 'lucide-react';
 import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
 import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
+import { FeedbackModal, FeedbackType } from '@/components/FeedbackModal';
 import { City } from '@/types';
 
 function SettingsRow({
@@ -109,6 +113,7 @@ export default function SettingsPage() {
     browseCity,
     exitPlanningMode,
     detectedCityName,
+    clearAllData,
   } = useAppStore();
   const router = useRouter();
 
@@ -117,6 +122,8 @@ export default function SettingsPage() {
   const [homeModalOpen, setHomeModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [recentCities, setRecentCities] = useState<RecentCity[]>([]);
+  const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (isGuestUser) {
@@ -190,6 +197,24 @@ export default function SettingsPage() {
     },
     [activeCity, isGuestUser, session, browseCity, router],
   );
+
+  const handleClearAllData = useCallback(async () => {
+    const confirmed = window.confirm(
+      'This will permanently delete all your places and city data. Are you sure?',
+    );
+    if (!confirmed) return;
+
+    setClearing(true);
+
+    if (!isGuestUser) {
+      try {
+        await fetch('/api/user/clear-data', { method: 'DELETE' });
+      } catch {}
+    }
+
+    clearAllData();
+    router.push('/dashboard');
+  }, [isGuestUser, clearAllData, router]);
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -306,6 +331,37 @@ export default function SettingsPage() {
         />
       </section>
 
+      {/* Feedback */}
+      <p
+        className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        Feedback
+      </p>
+      <section
+        className="rounded-2xl overflow-hidden mb-4"
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color-subtle)',
+        }}
+      >
+        <SettingsRow
+          icon={Bug}
+          label="Report a Bug"
+          onClick={() => setFeedbackType('bug')}
+        />
+        <SettingsRow
+          icon={Lightbulb}
+          label="Feature Request"
+          onClick={() => setFeedbackType('feature')}
+        />
+        <SettingsRow
+          icon={MessageCircle}
+          label="General Comment"
+          onClick={() => setFeedbackType('comment')}
+        />
+      </section>
+
       {/* Account */}
       <p
         className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
@@ -337,9 +393,10 @@ export default function SettingsPage() {
         )}
         <SettingsRow
           icon={Trash2}
-          label="Clear All Data"
+          label={clearing ? 'Clearing…' : 'Clear All Data'}
           iconColor="var(--status-closed)"
           labelColor="var(--status-closed)"
+          onClick={handleClearAllData}
         />
       </section>
 
@@ -364,6 +421,12 @@ export default function SettingsPage() {
         recentCities={recentCities}
         onSelect={handleHomeSelect}
         onClose={() => setHomeModalOpen(false)}
+      />
+      <FeedbackModal
+        open={feedbackType !== null}
+        type={feedbackType ?? 'comment'}
+        cityName={activeCity?.name}
+        onClose={() => setFeedbackType(null)}
       />
     </div>
   );
