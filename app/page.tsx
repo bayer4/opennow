@@ -56,8 +56,7 @@ export default function LandingPage() {
           className="text-center text-sm leading-relaxed max-w-[280px] mb-10"
           style={{ color: 'var(--text-secondary)' }}
         >
-          See which saved places are open right now.
-          Your travel hours dashboard.
+          Track what&apos;s open right now in any city.
         </p>
 
         {/* Features */}
@@ -70,8 +69,8 @@ export default function LandingPage() {
             },
             {
               icon: MapPin,
-              label: 'City-based trips',
-              sub: 'Organize places by destination',
+              label: 'Works in any city',
+              sub: 'Auto-detects where you are',
             },
             {
               icon: Zap,
