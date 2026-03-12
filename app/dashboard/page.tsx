@@ -127,6 +127,7 @@ export default function TodayPage() {
       }
     }
 
+    stashed.sort((a, b) => a.name.localeCompare(b.name));
     return { activePlaces: active, closedPlaces: closed, stashedPlaces: stashed };
   }, [activeCity, currentTime]);
 

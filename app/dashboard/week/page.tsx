@@ -122,6 +122,7 @@ export default function WeekPage() {
       if (p.isStashed) stashed.push(p);
       else active.push(p);
     }
+    stashed.sort((a, b) => a.name.localeCompare(b.name));
     return { activePlaces: active, stashedPlaces: stashed };
   }, [activeCity]);
 
