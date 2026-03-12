@@ -12,13 +12,12 @@ import {
   MapPin,
   Home,
   Compass,
-  Loader2,
-  Check,
+  ChevronRight,
   X,
 } from 'lucide-react';
 import { useAppStore, loadGuestCityByName } from '@/store/app-store';
+import { CitySearchModal, CityResult } from '@/components/CitySearchModal';
 import { City } from '@/types';
-import { forwardGeocode } from '@/lib/geo';
 
 function SettingsRow({
   icon: Icon,
@@ -28,6 +27,7 @@ function SettingsRow({
   labelColor,
   onClick,
   trailing,
+  disabled,
 }: {
   icon: React.ElementType;
   label: string;
@@ -36,39 +36,47 @@ function SettingsRow({
   labelColor?: string;
   onClick?: () => void;
   trailing?: React.ReactNode;
+  disabled?: boolean;
 }) {
+  const Tag = disabled ? 'div' : 'button';
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100"
+    <Tag
+      onClick={disabled ? undefined : onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors duration-100 ${disabled ? 'cursor-default' : ''}`}
       style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)')
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.backgroundColor = 'transparent')
-      }
+      {...(!disabled && {
+        onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
+          (e.currentTarget.style.backgroundColor = 'var(--bg-card-hover)'),
+        onMouseLeave: (e: React.MouseEvent<HTMLElement>) =>
+          (e.currentTarget.style.backgroundColor = 'transparent'),
+      })}
     >
       <Icon
         className="w-5 h-5 shrink-0"
-        style={{ color: iconColor ?? 'var(--accent)' }}
+        style={{ color: iconColor ?? (disabled ? 'var(--text-secondary)' : 'var(--accent)') }}
       />
       <span
         className="flex-1 text-left text-[14px]"
-        style={{ color: labelColor ?? 'var(--text-primary)' }}
+        style={{ color: labelColor ?? (disabled ? 'var(--text-secondary)' : 'var(--text-primary)') }}
       >
         {label}
       </span>
       {value && (
         <span
           className="text-[13px]"
-          style={{ color: 'var(--text-secondary)' }}
+          style={{ color: 'var(--text-secondary)', opacity: disabled ? 0.6 : 1 }}
         >
           {value}
         </span>
       )}
       {trailing}
-    </button>
+      {!disabled && onClick && (
+        <ChevronRight
+          className="w-4 h-4 shrink-0"
+          style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
+        />
+      )}
+    </Tag>
   );
 }
 
@@ -106,74 +114,55 @@ export default function SettingsPage() {
 
   const isGuestUser = !session?.user;
 
-  // Home base editing
-  const [editingHome, setEditingHome] = useState(false);
-  const [homeInput, setHomeInput] = useState(homeBase ?? '');
+  const [homeModalOpen, setHomeModalOpen] = useState(false);
+  const [browseModalOpen, setBrowseModalOpen] = useState(false);
 
-  const saveHome = useCallback(() => {
-    const trimmed = homeInput.trim();
-    if (trimmed) {
-      setHomeBase(trimmed);
-    }
-    setEditingHome(false);
-  }, [homeInput, setHomeBase]);
+  const handleHomeSelect = useCallback(
+    (city: CityResult) => {
+      setHomeBase(city.name);
+      setHomeModalOpen(false);
+    },
+    [setHomeBase],
+  );
 
-  // Browse other cities
-  const [browseOpen, setBrowseOpen] = useState(false);
-  const [browseInput, setBrowseInput] = useState('');
-  const [browseLoading, setBrowseLoading] = useState(false);
-  const [browseError, setBrowseError] = useState('');
+  const handleBrowseSelect = useCallback(
+    async (city: CityResult) => {
+      setBrowseModalOpen(false);
 
-  const handleBrowse = useCallback(async () => {
-    const cityName = browseInput.trim();
-    if (!cityName) return;
-
-    setBrowseLoading(true);
-    setBrowseError('');
-
-    try {
       if (!isGuestUser) {
-        const pos = await forwardGeocode(cityName);
-        const params = new URLSearchParams({ name: cityName });
-        if (pos) {
-          params.set('lat', String(pos.latitude));
-          params.set('lng', String(pos.longitude));
-        }
-        const res = await fetch(`/api/cities?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.city) {
-            browseCity(data.city);
-            router.push('/dashboard');
-            return;
+        try {
+          const params = new URLSearchParams({ name: city.name });
+          if (city.latitude) params.set('lat', String(city.latitude));
+          if (city.longitude) params.set('lng', String(city.longitude));
+          const res = await fetch(`/api/cities?${params}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.city) {
+              browseCity(data.city);
+              router.push('/dashboard');
+              return;
+            }
           }
-        }
-        // API didn't return a city — create locally as fallback
-        const lat = pos?.latitude ?? 0;
-        const lng = pos?.longitude ?? 0;
+        } catch {}
         const userId = (session!.user as Record<string, unknown>).id as string;
-        browseCity(makeEmptyCity(cityName, lat, lng, userId));
-        router.push('/dashboard');
+        browseCity(
+          makeEmptyCity(city.name, city.latitude, city.longitude, userId),
+        );
       } else {
-        // Guest: check localStorage or create new
-        const existing = loadGuestCityByName(cityName);
+        const existing = loadGuestCityByName(city.name);
         if (existing) {
           browseCity(existing);
-          router.push('/dashboard');
-          return;
+        } else {
+          browseCity(
+            makeEmptyCity(city.name, city.latitude, city.longitude),
+          );
         }
-        const pos = await forwardGeocode(cityName);
-        browseCity(
-          makeEmptyCity(cityName, pos?.latitude ?? 0, pos?.longitude ?? 0),
-        );
-        router.push('/dashboard');
       }
-    } catch {
-      setBrowseError('Could not find that city. Try again.');
-    } finally {
-      setBrowseLoading(false);
-    }
-  }, [browseInput, isGuestUser, session, browseCity, router]);
+
+      router.push('/dashboard');
+    },
+    [isGuestUser, session, browseCity, router],
+  );
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -256,138 +245,21 @@ export default function SettingsPage() {
       >
         <SettingsRow
           icon={MapPin}
-          label="Current City"
+          label="Current city"
           value={activeCity?.name ?? 'Not detected'}
+          disabled
         />
-
-        {/* Home base */}
-        {editingHome ? (
-          <div
-            className="flex items-center gap-2 px-4 py-3"
-            style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-          >
-            <Home
-              className="w-5 h-5 shrink-0"
-              style={{ color: 'var(--accent)' }}
-            />
-            <input
-              autoFocus
-              value={homeInput}
-              onChange={(e) => setHomeInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveHome();
-                if (e.key === 'Escape') setEditingHome(false);
-              }}
-              className="flex-1 bg-transparent outline-none text-[14px]"
-              style={{
-                color: 'var(--text-primary)',
-                borderBottom: '1px solid var(--accent)',
-                paddingBottom: 2,
-              }}
-              placeholder="City name"
-            />
-            <button
-              onClick={saveHome}
-              className="p-1 rounded"
-              style={{ color: 'var(--status-open)' }}
-            >
-              <Check className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setEditingHome(false)}
-              className="p-1 rounded"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <SettingsRow
-            icon={Home}
-            label="Home base"
-            value={homeBase ?? 'Not set'}
-            onClick={() => {
-              setHomeInput(homeBase ?? activeCity?.name ?? '');
-              setEditingHome(true);
-            }}
-          />
-        )}
-
-        {/* Browse other cities */}
-        {browseOpen ? (
-          <div
-            className="px-4 py-3"
-            style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
-          >
-            <div className="flex items-center gap-2">
-              <Compass
-                className="w-5 h-5 shrink-0"
-                style={{ color: 'var(--accent)' }}
-              />
-              <input
-                autoFocus
-                value={browseInput}
-                onChange={(e) => {
-                  setBrowseInput(e.target.value);
-                  setBrowseError('');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleBrowse();
-                  if (e.key === 'Escape') setBrowseOpen(false);
-                }}
-                className="flex-1 bg-transparent outline-none text-[14px]"
-                style={{
-                  color: 'var(--text-primary)',
-                  borderBottom: '1px solid var(--accent)',
-                  paddingBottom: 2,
-                }}
-                placeholder="Type a city name..."
-              />
-              {browseLoading ? (
-                <Loader2
-                  className="w-4 h-4 animate-spin shrink-0"
-                  style={{ color: 'var(--accent)' }}
-                />
-              ) : (
-                <>
-                  <button
-                    onClick={handleBrowse}
-                    disabled={!browseInput.trim()}
-                    className="px-3 py-1 rounded-full text-xs font-medium shrink-0"
-                    style={{
-                      backgroundColor: browseInput.trim()
-                        ? 'var(--accent)'
-                        : 'var(--bg-secondary, var(--bg-card))',
-                      color: browseInput.trim()
-                        ? '#fff'
-                        : 'var(--text-secondary)',
-                    }}
-                  >
-                    Go
-                  </button>
-                  <button
-                    onClick={() => setBrowseOpen(false)}
-                    className="p-1 shrink-0"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-            </div>
-            {browseError && (
-              <p className="text-[12px] mt-1.5 ml-7" style={{ color: 'var(--status-closing)' }}>
-                {browseError}
-              </p>
-            )}
-          </div>
-        ) : (
-          <SettingsRow
-            icon={Compass}
-            label="Browse other cities"
-            onClick={() => setBrowseOpen(true)}
-          />
-        )}
+        <SettingsRow
+          icon={Home}
+          label="Home base"
+          value={homeBase ?? 'Not set'}
+          onClick={() => setHomeModalOpen(true)}
+        />
+        <SettingsRow
+          icon={Compass}
+          label="Browse other cities"
+          onClick={() => setBrowseModalOpen(true)}
+        />
       </section>
 
       {/* Preferences */}
@@ -455,6 +327,20 @@ export default function SettingsPage() {
       >
         OpenNow v0.2.0
       </p>
+
+      {/* City search modals */}
+      <CitySearchModal
+        open={homeModalOpen}
+        title="Set Home Base"
+        onSelect={handleHomeSelect}
+        onClose={() => setHomeModalOpen(false)}
+      />
+      <CitySearchModal
+        open={browseModalOpen}
+        title="Browse City"
+        onSelect={handleBrowseSelect}
+        onClose={() => setBrowseModalOpen(false)}
+      />
     </div>
   );
 }
