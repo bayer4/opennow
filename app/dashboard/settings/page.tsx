@@ -343,25 +343,6 @@ export default function SettingsPage() {
         />
       </section>
 
-      {/* Temporary — remove after Sentry verification */}
-      <section
-        className="rounded-2xl overflow-hidden mt-4"
-        style={{
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border-color-subtle)',
-        }}
-      >
-        <SettingsRow
-          icon={Trash2}
-          label="Test Sentry"
-          iconColor="var(--status-closing)"
-          labelColor="var(--status-closing)"
-          onClick={() => {
-            throw new Error('Sentry test error');
-          }}
-        />
-      </section>
-
       <p
         className="text-[11px] text-center mt-8"
         style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
