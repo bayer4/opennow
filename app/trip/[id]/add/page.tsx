@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { ArrowLeft, Check, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { PlaceSearch } from '@/components/PlaceSearch';
 import { useAppStore } from '@/store/app-store';
 import { PlaceSearchResult, PlaceDetails, Place } from '@/types';
@@ -14,17 +14,17 @@ export default function AddPlacePage() {
   const activeCity = useAppStore((s) => s.activeCity);
   const addPlace = useAppStore((s) => s.addPlace);
   const isGuest = useAppStore((s) => s.isGuest);
-  const [adding, setAdding] = useState<string | null>(null);
-  const [added, setAdded] = useState<Set<string>>(new Set());
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  const handleSelect = useCallback(
+  const handleAdd = useCallback(
     async (result: PlaceSearchResult) => {
-      if (!activeCity || added.has(result.placeId)) return;
-      setAdding(result.placeId);
+      if (!activeCity || addedIds.has(result.placeId)) return;
+      setAddingId(result.placeId);
 
       try {
         const res = await fetch(
-          `/api/places/details?placeId=${encodeURIComponent(result.placeId)}`
+          `/api/places/details?placeId=${encodeURIComponent(result.placeId)}`,
         );
 
         let place: Place;
@@ -77,12 +77,12 @@ export default function AddPlacePage() {
         }
 
         addPlace(place);
-        setAdded((prev) => new Set(prev).add(result.placeId));
+        setAddedIds((prev) => new Set(prev).add(result.placeId));
       } finally {
-        setAdding(null);
+        setAddingId(null);
       }
     },
-    [activeCity, addPlace, added, session, isGuest]
+    [activeCity, addPlace, addedIds, session, isGuest],
   );
 
   const locationBias =
@@ -91,11 +91,15 @@ export default function AddPlacePage() {
       : undefined;
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div
+      className="min-h-dvh flex flex-col"
+      style={{ backgroundColor: 'var(--bg-primary)' }}
+    >
       <header
         className="sticky top-0 z-40 backdrop-blur-xl py-3 px-4 flex items-center gap-3"
         style={{
-          backgroundColor: 'color-mix(in srgb, var(--bg-primary) 80%, transparent)',
+          backgroundColor:
+            'color-mix(in srgb, var(--bg-primary) 80%, transparent)',
           borderBottom: '1px solid var(--divider)',
         }}
       >
@@ -106,7 +110,7 @@ export default function AddPlacePage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div>
+        <div className="flex-1">
           <h1
             className="text-[17px] font-semibold"
             style={{ color: 'var(--text-primary)' }}
@@ -121,112 +125,50 @@ export default function AddPlacePage() {
         </div>
       </header>
 
-      <div className="px-4 py-5">
-        <PlaceSearch locationBias={locationBias} onSelect={handleSelect} />
-
-        {added.size > 0 && (
-          <div className="mt-4">
-            <p
-              className="text-xs font-medium uppercase tracking-widest mb-2"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Added this session
-            </p>
-            <div className="flex flex-col gap-2">
-              {activeCity?.places
-                .filter((p) => p.googlePlaceId && added.has(p.googlePlaceId))
-                .map((place) => (
-                  <div
-                    key={place.id}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                    style={{
-                      backgroundColor: 'var(--bg-card)',
-                      border: '1px solid var(--border-color-subtle)',
-                    }}
-                  >
-                    <Check
-                      className="w-4 h-4 shrink-0"
-                      style={{ color: 'var(--status-open)' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className="text-[13px] font-medium truncate"
-                        style={{ color: 'var(--text-primary)' }}
-                      >
-                        {place.name}
-                      </p>
-                      {place.address && (
-                        <p
-                          className="text-[11px] truncate"
-                          style={{ color: 'var(--text-secondary)', opacity: 0.6 }}
-                        >
-                          {place.address}
-                        </p>
-                      )}
-                    </div>
-                    {place.hours.length > 0 ? (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: 'var(--status-open-bg)',
-                          color: 'var(--status-open)',
-                        }}
-                      >
-                        Hours loaded
-                      </span>
-                    ) : (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full"
-                        style={{
-                          backgroundColor: 'var(--status-closing-bg)',
-                          color: 'var(--status-closing)',
-                        }}
-                      >
-                        No hours
-                      </span>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {added.size === 0 && (
-          <div className="mt-12 text-center px-4">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: 'var(--bg-card)' }}
-            >
-              <MapPin className="w-6 h-6" style={{ color: 'var(--accent)' }} />
-            </div>
-            <p
-              className="text-sm font-medium mb-1"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              Search for places to add
-            </p>
-            <p
-              className="text-xs leading-relaxed max-w-[260px] mx-auto"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              Type a restaurant, cafe, or bar name. Hours are auto-fetched from Google Places.
-            </p>
-          </div>
-        )}
+      <div className="flex-1 px-4 py-4">
+        <PlaceSearch
+          locationBias={locationBias}
+          cityName={activeCity?.name}
+          addedIds={addedIds}
+          addingId={addingId}
+          onAdd={handleAdd}
+          autoFocus
+        />
       </div>
 
-      {adding && (
+      {addedIds.size > 0 && (
         <div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg"
+          className="sticky bottom-0 z-40 px-4 py-3 flex items-center justify-between backdrop-blur-xl"
           style={{
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
+            backgroundColor:
+              'color-mix(in srgb, var(--bg-primary) 85%, transparent)',
+            borderTop: '1px solid var(--divider)',
           }}
         >
-          <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Fetching details...
-          </span>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--status-open-bg)' }}
+            >
+              <Check
+                className="w-3.5 h-3.5"
+                style={{ color: 'var(--status-open)' }}
+              />
+            </div>
+            <span
+              className="text-sm font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              Added {addedIds.size} place{addedIds.size !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-transform duration-100 active:scale-[0.97]"
+            style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          >
+            Done
+          </button>
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useAppStore } from '@/store/app-store';
 import { chicagoCity } from '@/lib/seed-data';
+import { City } from '@/types';
 import {
   getCurrentPosition,
   reverseGeocode,
@@ -43,6 +44,7 @@ export default function DashboardLayout({
       let detectedCity: string | null = null;
       let userLat: number | undefined;
       let userLng: number | undefined;
+      let shouldRestock = false;
 
       try {
         const pos = await getCurrentPosition();
@@ -53,7 +55,7 @@ export default function DashboardLayout({
 
         const lastCity = loadLastCity();
         if (lastCity && isAwayFromCity(pos, lastCity)) {
-          restockAllStashed();
+          shouldRestock = true;
         }
 
         if (detectedCity && detectedCity !== 'Unknown') {
@@ -73,25 +75,57 @@ export default function DashboardLayout({
         }
       }
 
-      // For guest mode, use seed data (Chicago) as fallback
       if (isGuestUser) {
         const existing = useAppStore.getState().activeCity;
         if (!existing) {
-          setActiveCity(chicagoCity);
+          if (shouldRestock) {
+            const restocked = chicagoCity.places.map((p) => ({
+              ...p,
+              isStashed: false,
+              stashedAt: undefined,
+            }));
+            setActiveCity({ ...chicagoCity, places: restocked });
+          } else {
+            setActiveCity(chicagoCity);
+          }
         } else {
+          if (shouldRestock) restockAllStashed();
           setLoading(false);
         }
         return;
       }
 
-      // TODO: For authenticated users, load city data from API
-      // For now, fallback to seed data
+      // Authenticated user: load city from Supabase
+      try {
+        const cityName = detectedCity && detectedCity !== 'Unknown'
+          ? detectedCity
+          : null;
+
+        const params = new URLSearchParams();
+        if (cityName) params.set('name', cityName);
+        if (userLat !== undefined) params.set('lat', String(userLat));
+        if (userLng !== undefined) params.set('lng', String(userLng));
+        if (shouldRestock) params.set('restock', '1');
+
+        const res = await fetch(`/api/cities?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.city) {
+            const city: City = data.city;
+            setActiveCity(city);
+            return;
+          }
+        }
+      } catch {
+        // API failed, fall through to fallback
+      }
+
+      // Fallback: create a local city from seed data
       const existing = useAppStore.getState().activeCity;
       if (!existing) {
-        const userId = (session!.user as Record<string, unknown>).id as string;
         setActiveCity({
           ...chicagoCity,
-          userId,
+          userId: (session!.user as Record<string, unknown>).id as string,
           name: detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'Chicago',
           latitude: userLat ?? chicagoCity.latitude,
           longitude: userLng ?? chicagoCity.longitude,
