@@ -115,7 +115,7 @@ export default function SettingsPage() {
   const isGuestUser = !session?.user;
 
   const [homeModalOpen, setHomeModalOpen] = useState(false);
-  const [browseModalOpen, setBrowseModalOpen] = useState(false);
+  const [cityModalOpen, setCityModalOpen] = useState(false);
 
   const handleHomeSelect = useCallback(
     (city: CityResult) => {
@@ -125,9 +125,14 @@ export default function SettingsPage() {
     [setHomeBase],
   );
 
-  const handleBrowseSelect = useCallback(
+  const handleCitySelect = useCallback(
     async (city: CityResult) => {
-      setBrowseModalOpen(false);
+      setCityModalOpen(false);
+
+      // If the selected city matches the current active city, do nothing
+      if (activeCity && activeCity.name.toLowerCase() === city.name.toLowerCase()) {
+        return;
+      }
 
       if (!isGuestUser) {
         try {
@@ -161,7 +166,7 @@ export default function SettingsPage() {
 
       router.push('/dashboard');
     },
-    [isGuestUser, session, browseCity, router],
+    [activeCity, isGuestUser, session, browseCity, router],
   );
 
   return (
@@ -247,18 +252,13 @@ export default function SettingsPage() {
           icon={MapPin}
           label="Current city"
           value={activeCity?.name ?? 'Not detected'}
-          disabled
+          onClick={() => setCityModalOpen(true)}
         />
         <SettingsRow
           icon={Home}
           label="Home base"
           value={homeBase ?? 'Not set'}
           onClick={() => setHomeModalOpen(true)}
-        />
-        <SettingsRow
-          icon={Compass}
-          label="Browse other cities"
-          onClick={() => setBrowseModalOpen(true)}
         />
       </section>
 
@@ -330,16 +330,16 @@ export default function SettingsPage() {
 
       {/* City search modals */}
       <CitySearchModal
+        open={cityModalOpen}
+        title="Switch City"
+        onSelect={handleCitySelect}
+        onClose={() => setCityModalOpen(false)}
+      />
+      <CitySearchModal
         open={homeModalOpen}
         title="Set Home Base"
         onSelect={handleHomeSelect}
         onClose={() => setHomeModalOpen(false)}
-      />
-      <CitySearchModal
-        open={browseModalOpen}
-        title="Browse City"
-        onSelect={handleBrowseSelect}
-        onClose={() => setBrowseModalOpen(false)}
       />
     </div>
   );
