@@ -82,8 +82,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   detectedCityName: null,
 
   setActiveCity: (city) => {
-    set({ activeCity: city, isLoading: false });
-    if (get().isGuest) saveGuestCity(city);
+    const seen = new Set<string>();
+    const deduped = city.places.filter((p) => {
+      const key = p.googlePlaceId || p.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const cleaned = deduped.length < city.places.length
+      ? { ...city, places: deduped }
+      : city;
+    set({ activeCity: cleaned, isLoading: false });
+    if (get().isGuest) saveGuestCity(cleaned);
   },
   setDetectedCityName: (name) => set({ detectedCityName: name }),
   setLoading: (loading) => set({ isLoading: loading }),
@@ -92,7 +102,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   addPlace: (place) => {
     const city = get().activeCity;
     if (!city) return;
-    if (city.places.some((p) => p.id === place.id)) return;
+    const gpid = place.googlePlaceId || place.id;
+    const exists = city.places.some(
+      (p) => p.id === place.id || (p.googlePlaceId && p.googlePlaceId === gpid),
+    );
+    if (exists) return;
     const updated = {
       ...city,
       places: [...city.places, { ...place, sortOrder: city.places.length }],

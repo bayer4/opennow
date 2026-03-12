@@ -8,6 +8,7 @@ interface PlaceSearchProps {
   locationBias?: { lat: number; lng: number };
   cityName?: string;
   addedIds: Set<string>;
+  existingIds?: Set<string>;
   addingId: string | null;
   onAdd: (result: PlaceSearchResult) => void;
   placeholder?: string;
@@ -18,6 +19,7 @@ export function PlaceSearch({
   locationBias,
   cityName,
   addedIds,
+  existingIds,
   addingId,
   onAdd,
   placeholder = 'Search restaurants, cafes, bars...',
@@ -140,6 +142,7 @@ export function PlaceSearch({
           }}
         >
           {results.map((result) => {
+            const isExisting = existingIds?.has(result.placeId) ?? false;
             const isAdded = addedIds.has(result.placeId);
             const isAdding = addingId === result.placeId;
 
@@ -147,7 +150,10 @@ export function PlaceSearch({
               <div
                 key={result.placeId}
                 className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: '1px solid var(--border-color-subtle)' }}
+                style={{
+                  borderBottom: '1px solid var(--border-color-subtle)',
+                  opacity: isExisting ? 0.5 : 1,
+                }}
               >
                 <div className="flex-1 min-w-0">
                   <p
@@ -164,7 +170,17 @@ export function PlaceSearch({
                   </p>
                 </div>
 
-                {isAdded ? (
+                {isExisting ? (
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: 'var(--bg-secondary, var(--bg-card))' }}
+                  >
+                    <Check
+                      className="w-4 h-4"
+                      style={{ color: 'var(--text-secondary)' }}
+                    />
+                  </div>
+                ) : isAdded ? (
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                     style={{ backgroundColor: 'var(--status-open-bg)' }}

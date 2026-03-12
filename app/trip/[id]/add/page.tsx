@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, Check } from 'lucide-react';
@@ -15,7 +15,21 @@ export default function AddPlacePage() {
   const addPlace = useAppStore((s) => s.addPlace);
   const isGuest = useAppStore((s) => s.isGuest);
   const [addingId, setAddingId] = useState<string | null>(null);
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [sessionAddedIds, setSessionAddedIds] = useState<Set<string>>(new Set());
+
+  const existingPlaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    activeCity?.places.forEach((p) => {
+      if (p.googlePlaceId) ids.add(p.googlePlaceId);
+      ids.add(p.id);
+    });
+    return ids;
+  }, [activeCity?.places]);
+
+  const addedIds = useMemo(
+    () => new Set([...existingPlaceIds, ...sessionAddedIds]),
+    [existingPlaceIds, sessionAddedIds],
+  );
 
   const handleAdd = useCallback(
     async (result: PlaceSearchResult) => {
@@ -77,7 +91,7 @@ export default function AddPlacePage() {
         }
 
         addPlace(place);
-        setAddedIds((prev) => new Set(prev).add(result.placeId));
+        setSessionAddedIds((prev) => new Set(prev).add(result.placeId));
       } finally {
         setAddingId(null);
       }
@@ -130,13 +144,14 @@ export default function AddPlacePage() {
           locationBias={locationBias}
           cityName={activeCity?.name}
           addedIds={addedIds}
+          existingIds={existingPlaceIds}
           addingId={addingId}
           onAdd={handleAdd}
           autoFocus
         />
       </div>
 
-      {addedIds.size > 0 && (
+      {sessionAddedIds.size > 0 && (
         <div
           className="sticky bottom-0 z-40 px-4 py-3 flex items-center justify-between backdrop-blur-xl"
           style={{
@@ -159,7 +174,7 @@ export default function AddPlacePage() {
               className="text-sm font-medium"
               style={{ color: 'var(--text-primary)' }}
             >
-              Added {addedIds.size} place{addedIds.size !== 1 ? 's' : ''}
+              Added {sessionAddedIds.size} place{sessionAddedIds.size !== 1 ? 's' : ''}
             </span>
           </div>
           <button
