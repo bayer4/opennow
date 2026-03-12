@@ -6,7 +6,6 @@ import { CityHeader } from '@/components/CityHeader';
 import { BottomNav } from '@/components/BottomNav';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { useAppStore } from '@/store/app-store';
-import { chicagoCity } from '@/lib/seed-data';
 import { City } from '@/types';
 import {
   getCurrentPosition,
@@ -15,6 +14,15 @@ import {
   saveLastCity,
   isAwayFromCity,
 } from '@/lib/geo';
+
+function makeEmptyCity(
+  name: string,
+  lat: number,
+  lng: number,
+  userId = 'guest',
+): City {
+  return { id: name.toLowerCase().replace(/\s+/g, '-'), userId, name, latitude: lat, longitude: lng, places: [] };
+}
 
 export default function DashboardLayout({
   children,
@@ -75,19 +83,12 @@ export default function DashboardLayout({
         }
       }
 
+      // Guest users: empty city based on detected location
       if (isGuestUser) {
         const existing = useAppStore.getState().activeCity;
         if (!existing) {
-          if (shouldRestock) {
-            const restocked = chicagoCity.places.map((p) => ({
-              ...p,
-              isStashed: false,
-              stashedAt: undefined,
-            }));
-            setActiveCity({ ...chicagoCity, places: restocked });
-          } else {
-            setActiveCity(chicagoCity);
-          }
+          const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
+          setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0));
         } else {
           if (shouldRestock) restockAllStashed();
           setLoading(false);
@@ -120,16 +121,12 @@ export default function DashboardLayout({
         // API failed, fall through to fallback
       }
 
-      // Fallback: create a local city from seed data
+      // Fallback: empty city from geolocation
       const existing = useAppStore.getState().activeCity;
       if (!existing) {
-        setActiveCity({
-          ...chicagoCity,
-          userId: (session!.user as Record<string, unknown>).id as string,
-          name: detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'Chicago',
-          latitude: userLat ?? chicagoCity.latitude,
-          longitude: userLng ?? chicagoCity.longitude,
-        });
+        const userId = (session!.user as Record<string, unknown>).id as string;
+        const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
+        setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0, userId));
       } else {
         setLoading(false);
       }
