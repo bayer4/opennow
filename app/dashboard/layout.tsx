@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { CityHeader } from '@/components/CityHeader';
 import { BottomNav } from '@/components/BottomNav';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { useAppStore } from '@/store/app-store';
+import { useAppStore, loadGuestCity } from '@/store/app-store';
 import { City } from '@/types';
 import {
   getCurrentPosition,
@@ -83,12 +83,26 @@ export default function DashboardLayout({
         }
       }
 
-      // Guest users: empty city based on detected location
+      // Guest users: restore from localStorage or create empty city
       if (isGuestUser) {
         const existing = useAppStore.getState().activeCity;
         if (!existing) {
-          const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
-          setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0));
+          const saved = loadGuestCity();
+          if (saved && saved.places.length > 0) {
+            const city = { ...saved };
+            if (detectedCity && detectedCity !== 'Unknown' && city.name !== detectedCity) {
+              city.name = detectedCity;
+            }
+            if (shouldRestock) {
+              city.places = city.places.map((p) =>
+                p.isStashed ? { ...p, isStashed: false, stashedAt: undefined } : p,
+              );
+            }
+            setActiveCity(city);
+          } else {
+            const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
+            setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0));
+          }
         } else {
           if (shouldRestock) restockAllStashed();
           setLoading(false);

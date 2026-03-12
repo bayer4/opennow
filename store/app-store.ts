@@ -1,6 +1,29 @@
 import { create } from 'zustand';
 import { City, Place } from '@/types';
 
+const GUEST_STORAGE_KEY = 'opennow-guest-city';
+
+function saveGuestCity(city: City | null) {
+  try {
+    if (city) localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(city));
+    else localStorage.removeItem(GUEST_STORAGE_KEY);
+  } catch {}
+}
+
+export function loadGuestCity(): City | null {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function persistAfterMutation(state: { activeCity: City | null; isGuest: boolean }) {
+  if (state.isGuest && state.activeCity) {
+    saveGuestCity(state.activeCity);
+  }
+}
+
 function persistPlace(
   placeId: string,
   data: Record<string, unknown>,
@@ -58,7 +81,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   isGuest: false,
   detectedCityName: null,
 
-  setActiveCity: (city) => set({ activeCity: city, isLoading: false }),
+  setActiveCity: (city) => {
+    set({ activeCity: city, isLoading: false });
+    if (get().isGuest) saveGuestCity(city);
+  },
   setDetectedCityName: (name) => set({ detectedCityName: name }),
   setLoading: (loading) => set({ isLoading: loading }),
   setGuest: (guest) => set({ isGuest: guest }),
@@ -67,24 +93,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     const city = get().activeCity;
     if (!city) return;
     if (city.places.some((p) => p.id === place.id)) return;
-    set({
-      activeCity: {
-        ...city,
-        places: [...city.places, { ...place, sortOrder: city.places.length }],
-      },
-    });
+    const updated = {
+      ...city,
+      places: [...city.places, { ...place, sortOrder: city.places.length }],
+    };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
 
   removePlace: (placeId) => {
     const city = get().activeCity;
     if (!city) return;
     deletePersistedPlace(placeId, get().isGuest);
-    set({
-      activeCity: {
-        ...city,
-        places: city.places.filter((p) => p.id !== placeId),
-      },
-    });
+    const updated = { ...city, places: city.places.filter((p) => p.id !== placeId) };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
 
   stashPlace: (placeId) => {
@@ -92,34 +115,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!city) return;
     const stashedAt = new Date().toISOString();
     persistPlace(placeId, { isStashed: true, stashedAt }, get().isGuest);
-    set({
-      activeCity: {
-        ...city,
-        places: city.places.map((p) =>
-          p.id === placeId ? { ...p, isStashed: true, stashedAt } : p,
-        ),
-      },
-    });
+    const updated = {
+      ...city,
+      places: city.places.map((p) =>
+        p.id === placeId ? { ...p, isStashed: true, stashedAt } : p,
+      ),
+    };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
 
   unstashPlace: (placeId) => {
     const city = get().activeCity;
     if (!city) return;
-    persistPlace(
-      placeId,
-      { isStashed: false, stashedAt: null },
-      get().isGuest,
-    );
-    set({
-      activeCity: {
-        ...city,
-        places: city.places.map((p) =>
-          p.id === placeId
-            ? { ...p, isStashed: false, stashedAt: undefined }
-            : p,
-        ),
-      },
-    });
+    persistPlace(placeId, { isStashed: false, stashedAt: null }, get().isGuest);
+    const updated = {
+      ...city,
+      places: city.places.map((p) =>
+        p.id === placeId ? { ...p, isStashed: false, stashedAt: undefined } : p,
+      ),
+    };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
 
   restockAllStashed: () => {
@@ -127,14 +144,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!city) return;
     const hasStashed = city.places.some((p) => p.isStashed);
     if (!hasStashed) return;
-    set({
-      activeCity: {
-        ...city,
-        places: city.places.map((p) =>
-          p.isStashed ? { ...p, isStashed: false, stashedAt: undefined } : p,
-        ),
-      },
-    });
+    const updated = {
+      ...city,
+      places: city.places.map((p) =>
+        p.isStashed ? { ...p, isStashed: false, stashedAt: undefined } : p,
+      ),
+    };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
 
   toggleTheme: () =>
