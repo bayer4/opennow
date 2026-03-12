@@ -76,3 +76,35 @@ export function saveLastCity(city: CityInfo): void {
     localStorage.setItem('opennow-city', JSON.stringify(city));
   } catch {}
 }
+
+const HOME_BASE_KEY = 'opennow-home-base';
+
+export function loadHomeBase(): string | null {
+  try {
+    return localStorage.getItem(HOME_BASE_KEY);
+  } catch {}
+  return null;
+}
+
+export function saveHomeBase(city: string): void {
+  try {
+    localStorage.setItem(HOME_BASE_KEY, city);
+  } catch {}
+}
+
+export async function forwardGeocode(
+  cityName: string,
+): Promise<GeoPosition | null> {
+  try {
+    const res = await fetch(
+      `/api/geo/forward?city=${encodeURIComponent(cityName)}`,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.latitude != null && data.longitude != null) {
+        return { latitude: data.latitude, longitude: data.longitude };
+      }
+    }
+  } catch {}
+  return null;
+}

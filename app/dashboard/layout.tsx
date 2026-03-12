@@ -13,6 +13,8 @@ import {
   loadLastCity,
   saveLastCity,
   isAwayFromCity,
+  loadHomeBase,
+  saveHomeBase,
 } from '@/lib/geo';
 
 function makeEmptyCity(
@@ -21,7 +23,14 @@ function makeEmptyCity(
   lng: number,
   userId = 'guest',
 ): City {
-  return { id: name.toLowerCase().replace(/\s+/g, '-'), userId, name, latitude: lat, longitude: lng, places: [] };
+  return {
+    id: name.toLowerCase().replace(/\s+/g, '-'),
+    userId,
+    name,
+    latitude: lat,
+    longitude: lng,
+    places: [],
+  };
 }
 
 export default function DashboardLayout({
@@ -34,6 +43,7 @@ export default function DashboardLayout({
   const setDetectedCityName = useAppStore((s) => s.setDetectedCityName);
   const setLoading = useAppStore((s) => s.setLoading);
   const setGuest = useAppStore((s) => s.setGuest);
+  const setHomeBase = useAppStore((s) => s.setHomeBase);
   const restockAllStashed = useAppStore((s) => s.restockAllStashed);
   const tick = useAppStore((s) => s.tick);
   const didInit = useRef(false);
@@ -83,25 +93,42 @@ export default function DashboardLayout({
         }
       }
 
-      // Guest users: restore from localStorage or create empty city
+      // Initialize home base on first visit if not already set
+      const currentHomeBase = loadHomeBase();
+      const cityName =
+        detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
+
+      if (!currentHomeBase && cityName !== 'My City') {
+        saveHomeBase(cityName);
+        setHomeBase(cityName);
+      }
+
+      // Home base city never restocks
+      const homeBase = currentHomeBase ?? cityName;
+      const isHome = cityName.toLowerCase() === homeBase.toLowerCase();
+      if (isHome) shouldRestock = false;
+
+      // ─── Guest users ───
       if (isGuestUser) {
         const existing = useAppStore.getState().activeCity;
         if (!existing) {
-          const saved = loadGuestCity();
+          const cityId = cityName.toLowerCase().replace(/\s+/g, '-');
+          const saved = loadGuestCity(cityId);
+
           if (saved && saved.places.length > 0) {
             const city = { ...saved };
-            if (detectedCity && detectedCity !== 'Unknown' && city.name !== detectedCity) {
-              city.name = detectedCity;
-            }
             if (shouldRestock) {
               city.places = city.places.map((p) =>
-                p.isStashed ? { ...p, isStashed: false, stashedAt: undefined } : p,
+                p.isStashed
+                  ? { ...p, isStashed: false, stashedAt: undefined }
+                  : p,
               );
             }
             setActiveCity(city);
           } else {
-            const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
-            setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0));
+            setActiveCity(
+              makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0),
+            );
           }
         } else {
           if (shouldRestock) restockAllStashed();
@@ -110,14 +137,27 @@ export default function DashboardLayout({
         return;
       }
 
-      // Authenticated user: load city from Supabase
-      try {
-        const cityName = detectedCity && detectedCity !== 'Unknown'
-          ? detectedCity
-          : null;
+      // ─── Authenticated user: load city from Supabase ───
 
+      // Try loading home base from server for auth users
+      if (!currentHomeBase) {
+        try {
+          const hbRes = await fetch('/api/user/home-base');
+          if (hbRes.ok) {
+            const hbData = await hbRes.json();
+            if (hbData.homeBase) {
+              saveHomeBase(hbData.homeBase);
+              setHomeBase(hbData.homeBase);
+            } else if (cityName !== 'My City') {
+              setHomeBase(cityName);
+            }
+          }
+        } catch {}
+      }
+
+      try {
         const params = new URLSearchParams();
-        if (cityName) params.set('name', cityName);
+        if (cityName !== 'My City') params.set('name', cityName);
         if (userLat !== undefined) params.set('lat', String(userLat));
         if (userLng !== undefined) params.set('lng', String(userLng));
         if (shouldRestock) params.set('restock', '1');
@@ -138,16 +178,27 @@ export default function DashboardLayout({
       // Fallback: empty city from geolocation
       const existing = useAppStore.getState().activeCity;
       if (!existing) {
-        const userId = (session!.user as Record<string, unknown>).id as string;
-        const cityName = detectedCity && detectedCity !== 'Unknown' ? detectedCity : 'My City';
-        setActiveCity(makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0, userId));
+        const userId = (session!.user as Record<string, unknown>)
+          .id as string;
+        setActiveCity(
+          makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0, userId),
+        );
       } else {
         setLoading(false);
       }
     }
 
     init();
-  }, [session, status, setActiveCity, setDetectedCityName, setLoading, setGuest, restockAllStashed]);
+  }, [
+    session,
+    status,
+    setActiveCity,
+    setDetectedCityName,
+    setLoading,
+    setGuest,
+    setHomeBase,
+    restockAllStashed,
+  ]);
 
   useEffect(() => {
     const interval = setInterval(tick, 60_000);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Sun, Moon, User } from 'lucide-react';
+import { MapPin, Compass, Sun, Moon, User, X } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
 export function CityHeader() {
@@ -11,6 +11,9 @@ export function CityHeader() {
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const currentTime = useAppStore((s) => s.currentTime);
+  const isPlanningMode = useAppStore((s) => s.isPlanningMode);
+  const detectedCityName = useAppStore((s) => s.detectedCityName);
+  const exitPlanningMode = useAppStore((s) => s.exitPlanningMode);
   const { data: session } = useSession();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -26,6 +29,11 @@ export function CityHeader() {
         hour12: true,
       })
     : '';
+
+  const handleExitPlanning = () => {
+    exitPlanningMode();
+    router.push('/dashboard');
+  };
 
   return (
     <header
@@ -45,15 +53,41 @@ export function CityHeader() {
           </h1>
           <div
             className="flex items-center gap-1.5 text-[13px]"
-            style={{ color: 'var(--text-secondary)' }}
+            style={{ color: isPlanningMode ? 'var(--accent)' : 'var(--text-secondary)' }}
           >
-            {activeCity && <MapPin className="w-3.5 h-3.5 shrink-0" />}
-            <span>{day}</span>
-            <span className="mx-0.5 opacity-40">&middot;</span>
-            <span className="font-mono tabular-nums">{time}</span>
+            {isPlanningMode ? (
+              <Compass className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              activeCity && <MapPin className="w-3.5 h-3.5 shrink-0" />
+            )}
+            {isPlanningMode ? (
+              <button onClick={handleExitPlanning} className="flex items-center gap-1.5">
+                <span>Browsing</span>
+                <span className="mx-0.5 opacity-40">&middot;</span>
+                <span className="underline underline-offset-2">
+                  Back to {detectedCityName ?? 'my city'}
+                </span>
+              </button>
+            ) : (
+              <>
+                <span>{day}</span>
+                <span className="mx-0.5 opacity-40">&middot;</span>
+                <span className="font-mono tabular-nums">{time}</span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {isPlanningMode && (
+            <button
+              onClick={handleExitPlanning}
+              className="p-2 rounded-xl transition-colors duration-150"
+              style={{ backgroundColor: 'var(--bg-card)' }}
+              aria-label="Exit planning mode"
+            >
+              <X className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            </button>
+          )}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-xl transition-colors duration-150"

@@ -1,24 +1,62 @@
 import { create } from 'zustand';
 import { City, Place } from '@/types';
 
-const GUEST_STORAGE_KEY = 'opennow-guest-city';
+// ─── Guest multi-city localStorage ───
+
+const GUEST_CITIES_KEY = 'opennow-guest-cities';
+const OLD_GUEST_CITY_KEY = 'opennow-guest-city';
 
 function saveGuestCity(city: City | null) {
+  if (!city) return;
   try {
-    if (city) localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(city));
-    else localStorage.removeItem(GUEST_STORAGE_KEY);
+    const raw = localStorage.getItem(GUEST_CITIES_KEY);
+    const cities: Record<string, City> = raw ? JSON.parse(raw) : {};
+    cities[city.id] = city;
+    localStorage.setItem(GUEST_CITIES_KEY, JSON.stringify(cities));
   } catch {}
 }
 
-export function loadGuestCity(): City | null {
+export function loadGuestCity(cityId?: string): City | null {
   try {
-    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    const raw = localStorage.getItem(GUEST_CITIES_KEY);
+    if (raw) {
+      const cities: Record<string, City> = JSON.parse(raw);
+      if (cityId) return cities[cityId] ?? null;
+      const values = Object.values(cities);
+      return values.length > 0 ? values[0] : null;
+    }
+    // Migrate from old single-city format
+    const oldRaw = localStorage.getItem(OLD_GUEST_CITY_KEY);
+    if (oldRaw) {
+      const city: City = JSON.parse(oldRaw);
+      saveGuestCity(city);
+      localStorage.removeItem(OLD_GUEST_CITY_KEY);
+      return city;
+    }
   } catch {}
   return null;
 }
 
-function persistAfterMutation(state: { activeCity: City | null; isGuest: boolean }) {
+export function loadGuestCityByName(name: string): City | null {
+  try {
+    const raw = localStorage.getItem(GUEST_CITIES_KEY);
+    if (raw) {
+      const cities: Record<string, City> = JSON.parse(raw);
+      const id = name.toLowerCase().replace(/\s+/g, '-');
+      return (
+        cities[id] ??
+        Object.values(cities).find((c) => c.name === name) ??
+        null
+      );
+    }
+  } catch {}
+  return null;
+}
+
+function persistAfterMutation(state: {
+  activeCity: City | null;
+  isGuest: boolean;
+}) {
   if (state.isGuest && state.activeCity) {
     saveGuestCity(state.activeCity);
   }
@@ -42,6 +80,12 @@ function deletePersistedPlace(placeId: string, isGuest: boolean) {
   fetch(`/api/places/${placeId}`, { method: 'DELETE' }).catch(() => {});
 }
 
+// ─── Planning mode snapshot (module-level, not persisted) ───
+
+let gpsCitySnapshot: City | null = null;
+
+// ─── Store ───
+
 interface AppState {
   activeCity: City | null;
   theme: 'dark' | 'light';
@@ -51,11 +95,16 @@ interface AppState {
   isLoading: boolean;
   isGuest: boolean;
   detectedCityName: string | null;
+  homeBase: string | null;
+  isPlanningMode: boolean;
 
   setActiveCity: (city: City) => void;
   setDetectedCityName: (name: string) => void;
   setLoading: (loading: boolean) => void;
   setGuest: (guest: boolean) => void;
+  setHomeBase: (city: string) => void;
+  browseCity: (city: City) => void;
+  exitPlanningMode: () => void;
   addPlace: (place: Place) => void;
   removePlace: (placeId: string) => void;
   stashPlace: (placeId: string) => void;
@@ -65,6 +114,16 @@ interface AppState {
   toggleClosedPlaces: () => void;
   toggleStashedPlaces: () => void;
   tick: () => void;
+}
+
+function deduplicatePlaces(places: Place[]): Place[] {
+  const seen = new Set<string>();
+  return places.filter((p) => {
+    const key = p.googlePlaceId || p.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -80,31 +139,77 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: true,
   isGuest: false,
   detectedCityName: null,
+  homeBase:
+    typeof window !== 'undefined'
+      ? localStorage.getItem('opennow-home-base')
+      : null,
+  isPlanningMode: false,
 
   setActiveCity: (city) => {
-    const seen = new Set<string>();
-    const deduped = city.places.filter((p) => {
-      const key = p.googlePlaceId || p.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    const cleaned = deduped.length < city.places.length
-      ? { ...city, places: deduped }
-      : city;
+    const deduped = deduplicatePlaces(city.places);
+    const cleaned =
+      deduped.length < city.places.length ? { ...city, places: deduped } : city;
     set({ activeCity: cleaned, isLoading: false });
     if (get().isGuest) saveGuestCity(cleaned);
   },
+
   setDetectedCityName: (name) => set({ detectedCityName: name }),
   setLoading: (loading) => set({ isLoading: loading }),
   setGuest: (guest) => set({ isGuest: guest }),
+
+  setHomeBase: (city) => {
+    try {
+      localStorage.setItem('opennow-home-base', city);
+    } catch {}
+    set({ homeBase: city });
+    if (!get().isGuest) {
+      fetch('/api/user/home-base', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeBase: city }),
+      }).catch(() => {});
+    }
+  },
+
+  browseCity: (city) => {
+    const state = get();
+    if (state.isGuest && state.activeCity) {
+      saveGuestCity(state.activeCity);
+    }
+    if (!state.isPlanningMode && state.activeCity) {
+      gpsCitySnapshot = state.activeCity;
+    }
+    const deduped = deduplicatePlaces(city.places);
+    const cleaned =
+      deduped.length < city.places.length ? { ...city, places: deduped } : city;
+    set({ activeCity: cleaned, isPlanningMode: true, isLoading: false });
+    if (state.isGuest) saveGuestCity(cleaned);
+  },
+
+  exitPlanningMode: () => {
+    const state = get();
+    if (state.isGuest && state.activeCity) {
+      saveGuestCity(state.activeCity);
+    }
+    if (gpsCitySnapshot) {
+      const fresh = state.isGuest
+        ? loadGuestCity(gpsCitySnapshot.id) ?? gpsCitySnapshot
+        : gpsCitySnapshot;
+      set({ activeCity: fresh, isPlanningMode: false });
+      gpsCitySnapshot = null;
+    } else {
+      set({ isPlanningMode: false });
+    }
+  },
 
   addPlace: (place) => {
     const city = get().activeCity;
     if (!city) return;
     const gpid = place.googlePlaceId || place.id;
     const exists = city.places.some(
-      (p) => p.id === place.id || (p.googlePlaceId && p.googlePlaceId === gpid),
+      (p) =>
+        p.id === place.id ||
+        (p.googlePlaceId && p.googlePlaceId === gpid),
     );
     if (exists) return;
     const updated = {
@@ -119,7 +224,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const city = get().activeCity;
     if (!city) return;
     deletePersistedPlace(placeId, get().isGuest);
-    const updated = { ...city, places: city.places.filter((p) => p.id !== placeId) };
+    const updated = {
+      ...city,
+      places: city.places.filter((p) => p.id !== placeId),
+    };
     set({ activeCity: updated });
     persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
   },
@@ -146,7 +254,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const updated = {
       ...city,
       places: city.places.map((p) =>
-        p.id === placeId ? { ...p, isStashed: false, stashedAt: undefined } : p,
+        p.id === placeId
+          ? { ...p, isStashed: false, stashedAt: undefined }
+          : p,
       ),
     };
     set({ activeCity: updated });
