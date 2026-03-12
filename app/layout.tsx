@@ -13,14 +13,15 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const APP_TITLE = 'OpenNow';
-const APP_DESCRIPTION =
-  "Know what's open right now, wherever you are. A slim wallet for the places you want to try.";
-const OG_IMAGE = '/og-image.png';
+const APP_NAME = 'OpenNow';
+const OG_TITLE = "OpenNow \u2014 Know what's open right now";
+const OG_DESCRIPTION =
+  "A pocket-sized shortlist for food travelers. Add the places you want to try, see live hours at a glance, and never show up to a closed door again.";
+const OG_IMAGE = '/og-image.jpg';
 
 export const metadata: Metadata = {
-  title: APP_TITLE,
-  description: APP_DESCRIPTION,
+  title: APP_NAME,
+  description: OG_DESCRIPTION,
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.png',
@@ -28,22 +29,22 @@ export const metadata: Metadata = {
     apple: '/icons/apple-touch-icon.svg',
   },
   openGraph: {
-    title: APP_TITLE,
-    description: APP_DESCRIPTION,
-    siteName: APP_TITLE,
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: APP_TITLE }],
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    siteName: APP_NAME,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: APP_NAME }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: APP_TITLE,
-    description: APP_DESCRIPTION,
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
     images: [OG_IMAGE],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: APP_TITLE,
+    title: APP_NAME,
     startupImage: [
       {
         url: '/icons/icon-512.svg',
