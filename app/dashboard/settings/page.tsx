@@ -17,6 +17,7 @@ import {
   Bug,
   Lightbulb,
   MessageCircle,
+  Share2,
 } from 'lucide-react';
 import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
 import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
@@ -124,6 +125,7 @@ export default function SettingsPage() {
   const [recentCities, setRecentCities] = useState<RecentCity[]>([]);
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
   const [clearing, setClearing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isGuestUser) {
@@ -359,6 +361,42 @@ export default function SettingsPage() {
           icon={MessageCircle}
           label="General Comment"
           onClick={() => setFeedbackType('comment')}
+        />
+      </section>
+
+      {/* Share */}
+      <section
+        className="rounded-2xl overflow-hidden mb-4"
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color-subtle)',
+        }}
+      >
+        <SettingsRow
+          icon={Share2}
+          label={copied ? 'Link copied!' : 'Share OpenNow'}
+          onClick={() => {
+            const url = window.location.origin;
+            if (navigator.share) {
+              navigator.share({ title: 'OpenNow', url }).catch(() => {});
+            } else if (navigator.clipboard?.writeText) {
+              navigator.clipboard.writeText(url).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }).catch(() => {});
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = url;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }
+          }}
         />
       </section>
 
