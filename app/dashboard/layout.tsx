@@ -217,6 +217,30 @@ export default function DashboardLayout({
     return () => clearInterval(interval);
   }, [tick]);
 
+  const isLoading = useAppStore((s) => s.isLoading);
+
+  if (status === 'loading' || isLoading) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-dvh flex flex-col items-center justify-center bg-[var(--bg-primary)]">
+          <p
+            className="text-[22px] font-bold tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            OpenNow
+          </p>
+          <div
+            className="mt-3 w-5 h-5 border-2 rounded-full animate-spin"
+            style={{
+              borderColor: 'var(--border-color-subtle)',
+              borderTopColor: 'var(--accent)',
+            }}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <div className="min-h-dvh flex flex-col bg-[var(--bg-primary)]">
