@@ -56,8 +56,7 @@ export default function LandingPage() {
           className="text-center text-[15px] leading-relaxed max-w-[300px] mb-10"
           style={{ color: 'var(--text-secondary)' }}
         >
-          Your shortlist of places to try&mdash;with
-          live hours so you always know what&apos;s open.
+          All your places. One glance. Live hours.
         </p>
 
         <div className="w-full max-w-[300px] flex flex-col gap-3 mb-10">

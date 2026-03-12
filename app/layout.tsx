@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 const APP_NAME = 'OpenNow';
-const OG_TITLE = "OpenNow \u2014 Know what's open right now";
+const OG_TITLE = 'OpenNow \u2014 All your places. One glance. Live hours.';
 const OG_DESCRIPTION =
-  "A pocket-sized shortlist for food travelers. Add the places you want to try, see live hours at a glance, and never show up to a closed door again.";
+  "A pocket-sized shortlist for food travelers. Save the spots you want to try, see live hours at a glance, and never show up to a closed door again.";
 const OG_IMAGE = '/og-image.jpg';
 
 export const metadata: Metadata = {
