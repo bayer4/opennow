@@ -21,7 +21,21 @@ export default function TodayPage() {
   const toggleClosedPlaces = useAppStore((s) => s.toggleClosedPlaces);
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
   const [addingId, setAddingId] = useState<string | null>(null);
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [sessionAddedIds, setSessionAddedIds] = useState<Set<string>>(new Set());
+
+  const existingPlaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    activeCity?.places.forEach((p) => {
+      if (p.googlePlaceId) ids.add(p.googlePlaceId);
+      ids.add(p.id);
+    });
+    return ids;
+  }, [activeCity?.places]);
+
+  const addedIds = useMemo(
+    () => new Set([...existingPlaceIds, ...sessionAddedIds]),
+    [existingPlaceIds, sessionAddedIds],
+  );
 
   const handleInlineAdd = useCallback(
     async (result: PlaceSearchResult) => {
@@ -79,7 +93,7 @@ export default function TodayPage() {
           } catch {}
         }
         addPlace(place);
-        setAddedIds((prev) => new Set(prev).add(result.placeId));
+        setSessionAddedIds((prev) => new Set(prev).add(result.placeId));
       } finally {
         setAddingId(null);
       }
@@ -152,12 +166,13 @@ export default function TodayPage() {
           locationBias={locationBias}
           cityName={activeCity.name}
           addedIds={addedIds}
+          existingIds={existingPlaceIds}
           addingId={addingId}
           onAdd={handleInlineAdd}
           placeholder="Search restaurants, cafes, bars..."
           autoFocus
         />
-        {addedIds.size > 0 && (
+        {sessionAddedIds.size > 0 && (
           <div className="flex items-center gap-2 mt-4">
             <div
               className="w-5 h-5 rounded-full flex items-center justify-center"
@@ -166,7 +181,7 @@ export default function TodayPage() {
               <Check className="w-3 h-3" style={{ color: 'var(--status-open)' }} />
             </div>
             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Added {addedIds.size} place{addedIds.size !== 1 ? 's' : ''}
+              Added {sessionAddedIds.size} place{sessionAddedIds.size !== 1 ? 's' : ''}
             </span>
           </div>
         )}
