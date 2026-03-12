@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { ChevronDown, ChevronUp, Plus, Archive, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Archive, Check, MapPin } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus, sortPlacesForToday } from '@/lib/status-engine';
 import { PlaceCard } from '@/components/PlaceCard';
@@ -22,6 +22,11 @@ export default function TodayPage() {
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [sessionAddedIds, setSessionAddedIds] = useState<Set<string>>(new Set());
+  const [hasAddedBefore, setHasAddedBefore] = useState(true);
+
+  useEffect(() => {
+    setHasAddedBefore(localStorage.getItem('opennow-has-added-before') === '1');
+  }, []);
 
   const existingPlaceIds = useMemo(() => {
     const ids = new Set<string>();
@@ -155,6 +160,39 @@ export default function TodayPage() {
       : undefined;
 
   if (allNonStashed === 0 && stashedPlaces.length === 0) {
+    if (hasAddedBefore) {
+      return (
+        <div className="px-4 py-5 max-w-[480px] mx-auto flex flex-col items-center justify-center" style={{ minHeight: '50vh' }}>
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color-subtle)' }}
+          >
+            <MapPin className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+          </div>
+          <p
+            className="text-[15px] font-medium mb-1"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            No places in {activeCity.name} yet
+          </p>
+          <p
+            className="text-[13px] mb-5"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Add some places to start tracking
+          </p>
+          <Link
+            href={`/trip/${activeCity.id}/add`}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-transform duration-100 active:scale-[0.97]"
+            style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          >
+            <Plus className="w-4 h-4" />
+            Add Places
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className="px-4 py-5 max-w-[480px] mx-auto">
         <p
