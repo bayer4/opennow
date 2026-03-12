@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, MapPin, Loader2 } from 'lucide-react';
+import { Search, X, MapPin, Loader2, Clock } from 'lucide-react';
 
 export interface CityResult {
   name: string;
@@ -16,9 +16,17 @@ interface Suggestion {
   description: string;
 }
 
+export interface RecentCity {
+  name: string;
+  latitude: number;
+  longitude: number;
+  placeCount: number;
+}
+
 interface CitySearchModalProps {
   open: boolean;
   title: string;
+  recentCities?: RecentCity[];
   onSelect: (city: CityResult) => void;
   onClose: () => void;
 }
@@ -26,6 +34,7 @@ interface CitySearchModalProps {
 export function CitySearchModal({
   open,
   title,
+  recentCities,
   onSelect,
   onClose,
 }: CitySearchModalProps) {
@@ -287,12 +296,70 @@ export function CitySearchModal({
             </div>
           )}
 
-          {query.length < 2 && (
+          {query.length < 2 && recentCities && recentCities.length > 0 && (
+            <div>
+              <p
+                className="text-[11px] font-medium uppercase tracking-widest mb-2 px-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Recent cities
+              </p>
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color-subtle)',
+                }}
+              >
+                {recentCities.map((rc, i) => (
+                  <button
+                    key={rc.name}
+                    onClick={() =>
+                      onSelect({
+                        name: rc.name,
+                        description: '',
+                        latitude: rc.latitude,
+                        longitude: rc.longitude,
+                      })
+                    }
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors duration-100 active:opacity-70"
+                    style={{
+                      borderBottom:
+                        i < recentCities.length - 1
+                          ? '1px solid var(--border-color-subtle)'
+                          : undefined,
+                    }}
+                  >
+                    <Clock
+                      className="w-4 h-4 shrink-0"
+                      style={{ color: 'var(--text-secondary)', opacity: 0.6 }}
+                    />
+                    <span
+                      className="flex-1 text-[14px] font-medium truncate"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {rc.name}
+                    </span>
+                    {rc.placeCount > 0 && (
+                      <span
+                        className="text-[12px] tabular-nums"
+                        style={{ color: 'var(--text-secondary)', opacity: 0.6 }}
+                      >
+                        {rc.placeCount} place{rc.placeCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {query.length < 2 && (!recentCities || recentCities.length === 0) && (
             <p
               className="text-center text-[13px] mt-6"
               style={{ color: 'var(--text-secondary)', opacity: 0.6 }}
             >
-              Start typing to search cities
+              Search for a city
             </p>
           )}
         </div>

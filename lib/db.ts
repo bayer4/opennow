@@ -293,6 +293,40 @@ export async function restockStashedPlaces(tripId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── City summaries (for recent-cities list) ───
+
+export interface CitySummary {
+  name: string;
+  latitude: number;
+  longitude: number;
+  placeCount: number;
+}
+
+export async function getAllCitySummaries(
+  userId: string,
+): Promise<CitySummary[]> {
+  const { data: rows, error } = await supabase()
+    .from('trips')
+    .select('city, latitude, longitude, places(count)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  if (!rows) return [];
+
+  return (rows as Array<{
+    city: string;
+    latitude: number | null;
+    longitude: number | null;
+    places: Array<{ count: number }>;
+  }>).map((r) => ({
+    name: r.city,
+    latitude: r.latitude ?? 0,
+    longitude: r.longitude ?? 0,
+    placeCount: r.places?.[0]?.count ?? 0,
+  }));
+}
+
 // ─── Legacy trip functions (used by setup/seed) ───
 
 export async function createTrip(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
@@ -15,8 +15,8 @@ import {
   ChevronRight,
   X,
 } from 'lucide-react';
-import { useAppStore, loadGuestCityByName } from '@/store/app-store';
-import { CitySearchModal, CityResult } from '@/components/CitySearchModal';
+import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
+import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
 import { City } from '@/types';
 
 function SettingsRow({
@@ -116,6 +116,28 @@ export default function SettingsPage() {
 
   const [homeModalOpen, setHomeModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
+  const [recentCities, setRecentCities] = useState<RecentCity[]>([]);
+
+  useEffect(() => {
+    if (isGuestUser) {
+      const all = loadAllGuestCities();
+      setRecentCities(
+        all.map((c) => ({
+          name: c.name,
+          latitude: c.latitude,
+          longitude: c.longitude,
+          placeCount: c.places.length,
+        })),
+      );
+    } else {
+      fetch('/api/cities/all')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.cities) setRecentCities(data.cities);
+        })
+        .catch(() => {});
+    }
+  }, [isGuestUser]);
 
   const handleHomeSelect = useCallback(
     (city: CityResult) => {
@@ -332,12 +354,14 @@ export default function SettingsPage() {
       <CitySearchModal
         open={cityModalOpen}
         title="Switch City"
+        recentCities={recentCities}
         onSelect={handleCitySelect}
         onClose={() => setCityModalOpen(false)}
       />
       <CitySearchModal
         open={homeModalOpen}
         title="Set Home Base"
+        recentCities={recentCities}
         onSelect={handleHomeSelect}
         onClose={() => setHomeModalOpen(false)}
       />

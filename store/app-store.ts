@@ -37,6 +37,16 @@ export function loadGuestCity(cityId?: string): City | null {
   return null;
 }
 
+export function loadAllGuestCities(): City[] {
+  try {
+    const raw = localStorage.getItem(GUEST_CITIES_KEY);
+    if (raw) {
+      return Object.values(JSON.parse(raw) as Record<string, City>);
+    }
+  } catch {}
+  return [];
+}
+
 export function loadGuestCityByName(name: string): City | null {
   try {
     const raw = localStorage.getItem(GUEST_CITIES_KEY);
