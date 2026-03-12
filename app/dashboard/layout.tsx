@@ -57,6 +57,18 @@ export default function DashboardLayout({
     setGuest(isGuestUser);
 
     async function init() {
+      // If we already have a city (e.g. returning from add-places page),
+      // just refresh the detected city label without overwriting activeCity.
+      if (useAppStore.getState().activeCity) {
+        setLoading(false);
+        try {
+          const pos = await getCurrentPosition();
+          const city = await reverseGeocode(pos);
+          if (city && city !== 'Unknown') setDetectedCityName(city);
+        } catch {}
+        return;
+      }
+
       setLoading(true);
 
       let detectedCity: string | null = null;
