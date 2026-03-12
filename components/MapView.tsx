@@ -288,9 +288,7 @@ export function MapView({ places, center, isDark }: MapViewProps) {
       (err) => {
         setGeoLoading(false);
         setGeoError(
-          err.code === err.PERMISSION_DENIED
-            ? 'Location access denied'
-            : 'Unable to get location',
+          err.code === err.PERMISSION_DENIED ? 'denied' : 'failed',
         );
       },
       { enableHighAccuracy: true, timeout: 10_000 },
@@ -353,8 +351,48 @@ export function MapView({ places, center, isDark }: MapViewProps) {
       )}
 
       {geoError && !nearMe && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[var(--status-closed-bg)] text-[var(--status-closed)] text-sm px-4 py-2.5 rounded-full border border-[var(--status-closed)]/20 backdrop-blur-xl shadow-lg whitespace-nowrap">
-          {geoError}
+        <div
+          className="absolute bottom-6 left-4 right-4 z-10 rounded-2xl p-4 border shadow-lg backdrop-blur-xl"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border-color-subtle)',
+          }}
+        >
+          <p
+            className="text-[14px] font-semibold mb-1"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {geoError === 'denied'
+              ? 'Location access denied'
+              : 'Unable to get location'}
+          </p>
+          <p
+            className="text-[12px] leading-relaxed mb-3"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {geoError === 'denied'
+              ? 'To use "Near me", enable location access in your browser settings (Settings \u2192 Safari \u2192 Location Services).'
+              : 'Check your connection and try again.'}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setGeoError(null);
+                toggleNearMe();
+              }}
+              className="text-[13px] font-medium px-4 py-2 rounded-lg transition-opacity active:opacity-80"
+              style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => setGeoError(null)}
+              className="text-[13px] font-medium px-4 py-2 rounded-lg transition-opacity active:opacity-80"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
