@@ -120,6 +120,7 @@ interface AppState {
   stashPlace: (placeId: string) => void;
   unstashPlace: (placeId: string) => void;
   restockAllStashed: () => void;
+  clearAllData: () => void;
   toggleTheme: () => void;
   toggleClosedPlaces: () => void;
   toggleStashedPlaces: () => void;
@@ -287,6 +288,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     set({ activeCity: updated });
     persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
+  },
+
+  clearAllData: () => {
+    try {
+      localStorage.removeItem(GUEST_CITIES_KEY);
+      localStorage.removeItem(OLD_GUEST_CITY_KEY);
+      localStorage.removeItem('opennow-city');
+      localStorage.removeItem('opennow-home-base');
+      localStorage.removeItem('opennow-has-added-before');
+    } catch {}
+    gpsCitySnapshot = null;
+    set({
+      activeCity: null,
+      homeBase: null,
+      isPlanningMode: false,
+      isLoading: false,
+      detectedCityName: null,
+    });
   },
 
   toggleTheme: () =>
