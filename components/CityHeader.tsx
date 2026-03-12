@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { MapPin, Sun, Moon, User } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 
@@ -11,6 +12,7 @@ export function CityHeader() {
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const currentTime = useAppStore((s) => s.currentTime);
   const { data: session } = useSession();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -65,15 +67,18 @@ export function CityHeader() {
             )}
           </button>
           {session?.user?.image ? (
-            <img
-              src={session.user.image}
-              alt=""
-              className="w-8 h-8 rounded-full"
-              style={{ boxShadow: '0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent)' }}
-              referrerPolicy="no-referrer"
-            />
+            <button onClick={() => router.push('/dashboard/settings')}>
+              <img
+                src={session.user.image}
+                alt=""
+                className="w-8 h-8 rounded-full"
+                style={{ boxShadow: '0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent)' }}
+                referrerPolicy="no-referrer"
+              />
+            </button>
           ) : session?.user ? (
-            <div
+            <button
+              onClick={() => router.push('/dashboard/settings')}
               className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{
                 backgroundColor: 'var(--accent)',
@@ -81,7 +86,7 @@ export function CityHeader() {
               }}
             >
               <User className="w-4 h-4 text-white" />
-            </div>
+            </button>
           ) : null}
         </div>
       </div>
