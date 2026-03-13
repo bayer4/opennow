@@ -1,13 +1,12 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, ChevronDown, ChevronUp, Archive } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { WeeklyGrid } from '@/components/WeeklyGrid';
 import { Place } from '@/types';
 import {
-  getPlaceStatus,
   getHoursTextForDay,
   getMinutesRemaining,
 } from '@/lib/status-engine';
@@ -21,18 +20,15 @@ function StashedGrid({ places, currentTime, timezone }: { places: Place[]; curre
   const today = getDayOfWeek(effectiveTime);
   const todayIdx = DAY_COLUMNS.indexOf(today as (typeof DAY_COLUMNS)[number]);
 
-  const rows = useMemo(() => {
-    return places.map((place) => {
-      const status = getPlaceStatus(place.hours, effectiveTime);
-      const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
-      const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
-        dayOfWeek,
-        text: getHoursTextForDay(place.hours, dayOfWeek),
-        isToday: dayOfWeek === today,
-      }));
-      return { place, status, minutesLeft, dayCells };
-    });
-  }, [places, currentTime, today]);
+  const rows = places.map((place) => {
+    const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
+    const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
+      dayOfWeek,
+      text: getHoursTextForDay(place.hours, dayOfWeek),
+      isToday: dayOfWeek === today,
+    }));
+    return { place, minutesLeft, dayCells };
+  });
 
   return (
     <table
@@ -47,7 +43,7 @@ function StashedGrid({ places, currentTime, timezone }: { places: Place[]; curre
         <col style={{ width: 52, minWidth: 52 }} />
       </colgroup>
       <tbody>
-        {rows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => (
+        {rows.map(({ place, minutesLeft, dayCells }, rowIdx) => (
           <tr
             key={place.id}
             style={{
@@ -115,17 +111,15 @@ export default function WeekPage() {
   const showStashedPlaces = useAppStore((s) => s.showStashedPlaces);
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
 
-  const { activePlaces, stashedPlaces } = useMemo(() => {
-    if (!activeCity) return { activePlaces: [], stashedPlaces: [] };
-    const active: Place[] = [];
-    const stashed: Place[] = [];
+  const activePlaces: Place[] = [];
+  const stashedPlaces: Place[] = [];
+  if (activeCity) {
     for (const p of activeCity.places) {
-      if (p.isStashed) stashed.push(p);
-      else active.push(p);
+      if (p.isStashed) stashedPlaces.push(p);
+      else activePlaces.push(p);
     }
-    stashed.sort((a, b) => a.name.localeCompare(b.name));
-    return { activePlaces: active, stashedPlaces: stashed };
-  }, [activeCity]);
+    stashedPlaces.sort((a, b) => a.name.localeCompare(b.name));
+  }
 
   const handleToggleStashed = useCallback(() => {
     toggleStashedPlaces();
