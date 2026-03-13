@@ -332,8 +332,10 @@ export default function DashboardLayout({
         } else {
           try {
             const res = await fetch('/api/cities/all');
-            const data = await res.json();
-            if (data.cities) existingCities = data.cities;
+            if (res.ok) {
+              const data = await res.json();
+              if (data.cities) existingCities = data.cities;
+            }
           } catch {}
         }
 
@@ -382,7 +384,9 @@ export default function DashboardLayout({
       }
 
       const homeBase = currentHomeBase ?? cityName;
-      const isHome = cityName.toLowerCase() === homeBase.toLowerCase();
+      const isHome = cityName && homeBase
+        ? cityName.toLowerCase() === homeBase.toLowerCase()
+        : false;
       if (isHome) shouldRestock = false;
 
       // ─── Guest users ───

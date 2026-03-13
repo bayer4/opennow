@@ -143,9 +143,9 @@ export default function SettingsPage() {
       );
     } else {
       fetch('/api/cities/all')
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
-          if (data.cities) setRecentCities(data.cities);
+          if (data?.cities) setRecentCities(data.cities);
         })
         .catch(() => {});
     }
@@ -163,7 +163,7 @@ export default function SettingsPage() {
     async (city: CityResult) => {
       setCityModalOpen(false);
 
-      if (activeCity && activeCity.name.toLowerCase() === city.name.toLowerCase()) {
+      if (activeCity?.name && city.name && activeCity.name.toLowerCase() === city.name.toLowerCase()) {
         return;
       }
 
@@ -382,27 +382,39 @@ export default function SettingsPage() {
         <SettingsRow
           icon={Share2}
           label={copied ? 'Link copied!' : 'Share OpenNow'}
-          onClick={() => {
+          onClick={async () => {
             const url = window.location.origin;
-            if (navigator.share) {
-              navigator.share({ title: 'OpenNow', url }).catch(() => {});
-            } else if (navigator.clipboard?.writeText) {
-              navigator.clipboard.writeText(url).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }).catch(() => {});
-            } else {
-              const ta = document.createElement('textarea');
-              ta.value = url;
-              ta.style.position = 'fixed';
-              ta.style.opacity = '0';
-              document.body.appendChild(ta);
-              ta.select();
-              document.execCommand('copy');
-              document.body.removeChild(ta);
+            const markCopied = () => {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
-            }
+            };
+            const fallbackCopy = () => {
+              try {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                markCopied();
+              } catch {}
+            };
+            try {
+              if (navigator.share) {
+                await navigator.share({ title: 'OpenNow', url });
+                return;
+              }
+            } catch {}
+            try {
+              if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                await navigator.clipboard.writeText(url);
+                markCopied();
+                return;
+              }
+            } catch {}
+            fallbackCopy();
           }}
         />
       </section>
