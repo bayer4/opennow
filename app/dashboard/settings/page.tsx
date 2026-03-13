@@ -461,7 +461,7 @@ export default function SettingsPage() {
         className="text-[11px] text-center mt-8"
         style={{ color: 'var(--text-secondary)', opacity: 0.4 }}
       >
-        OpenNow v0.2.0
+        OpenNow v0.3.0
       </p>
 
       {/* City search modals */}
