@@ -27,6 +27,11 @@ export function CityHeader() {
       ? currentTime.toLocaleDateString('en-US', { weekday: 'long', timeZone: tz })
       : dayNames[currentTime.getDay()]
     : '';
+  const shortDay = mounted
+    ? tz
+      ? currentTime.toLocaleDateString('en-US', { weekday: 'short', timeZone: tz })
+      : dayNames[currentTime.getDay()].slice(0, 3)
+    : '';
   const time = mounted
     ? currentTime.toLocaleTimeString('en-US', {
         hour: 'numeric',
@@ -67,13 +72,15 @@ export function CityHeader() {
               activeCity && <MapPin className="w-3.5 h-3.5 shrink-0" />
             )}
             {isPlanningMode ? (
-              <button onClick={handleExitPlanning} className="flex items-center gap-1.5">
-                <span>Browsing</span>
+              <>
+                <span className="font-mono tabular-nums">{shortDay} {time}</span>
                 <span className="mx-0.5 opacity-40">&middot;</span>
-                <span className="underline underline-offset-2">
-                  Back to {detectedCityName ?? 'my city'}
-                </span>
-              </button>
+                <button onClick={handleExitPlanning}>
+                  <span className="underline underline-offset-2">
+                    Back to {detectedCityName ?? 'my city'}
+                  </span>
+                </button>
+              </>
             ) : (
               <>
                 <span>{day}</span>
