@@ -2,6 +2,7 @@ import { PlaceSearchResult, PlaceDetails, OperatingHours } from '@/types';
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? '';
 const BASE = 'https://places.googleapis.com/v1/places';
+const REFERER = 'https://getopennow.com';
 
 const TYPE_TO_CATEGORY: Record<string, string> = {
   restaurant: 'restaurant',
@@ -66,6 +67,7 @@ export async function searchPlaces(
       'X-Goog-Api-Key': API_KEY,
       'X-Goog-FieldMask':
         'places.id,places.displayName,places.formattedAddress,places.types',
+      'Referer': REFERER,
     },
     body: JSON.stringify(body),
   });
@@ -101,6 +103,7 @@ export async function getPlaceDetails(
   const res = await fetch(`${BASE}/${placeId}`, {
     headers: {
       'X-Goog-Api-Key': API_KEY,
+      'Referer': REFERER,
       'X-Goog-FieldMask': [
         'id',
         'displayName',

@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const referer = 'https://getopennow.com';
     const res = await fetch(
       'https://places.googleapis.com/v1/places:autocomplete',
       {
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
+          'Referer': referer,
         },
         body: JSON.stringify({
           input: q,
