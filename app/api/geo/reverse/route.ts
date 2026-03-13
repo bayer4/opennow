@@ -21,13 +21,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const geoRes = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`,
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=locality%7Csublocality%7Cadministrative_area_level_3&key=${apiKey}`,
     );
 
     let city = 'Unknown';
     if (geoRes.ok) {
       const geoData = await geoRes.json();
-      city = extractCityName(geoData.results ?? []) ?? 'Unknown';
+      if (geoData.status === 'OK' && geoData.results?.length > 0) {
+        city = extractCityName(geoData.results) ?? 'Unknown';
+      }
     }
 
     return NextResponse.json({ city, timezone });

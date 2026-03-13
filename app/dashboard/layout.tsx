@@ -272,7 +272,6 @@ export default function DashboardLayout({
         const result = await reverseGeocode(pos);
         detectedCity = result.city;
         detectedTimezone = result.timezone;
-        setDetectedCityName(detectedCity);
 
         const lastCity = loadLastCity();
         if (lastCity && isAwayFromCity(pos, lastCity)) {
@@ -280,11 +279,17 @@ export default function DashboardLayout({
         }
 
         if (detectedCity && detectedCity !== 'Unknown') {
+          setDetectedCityName(detectedCity);
           saveLastCity({
             city: detectedCity,
             latitude: pos.latitude,
             longitude: pos.longitude,
           });
+        } else if (lastCity) {
+          detectedCity = lastCity.city;
+          userLat = lastCity.latitude;
+          userLng = lastCity.longitude;
+          setDetectedCityName(detectedCity);
         }
       } catch {
         const lastCity = loadLastCity();
