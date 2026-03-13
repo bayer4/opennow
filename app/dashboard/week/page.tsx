@@ -11,19 +11,20 @@ import {
   getHoursTextForDay,
   getMinutesRemaining,
 } from '@/lib/status-engine';
-import { getDayOfWeek, formatDurationClock } from '@/lib/time-utils';
+import { getDayOfWeek, formatDurationClock, dateInTimezone } from '@/lib/time-utils';
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function StashedGrid({ places, currentTime }: { places: Place[]; currentTime: Date }) {
-  const today = getDayOfWeek(currentTime);
+function StashedGrid({ places, currentTime, timezone }: { places: Place[]; currentTime: Date; timezone?: string }) {
+  const effectiveTime = dateInTimezone(currentTime, timezone);
+  const today = getDayOfWeek(effectiveTime);
   const todayIdx = DAY_COLUMNS.indexOf(today as (typeof DAY_COLUMNS)[number]);
 
   const rows = useMemo(() => {
     return places.map((place) => {
-      const status = getPlaceStatus(place.hours, currentTime);
-      const minutesLeft = getMinutesRemaining(place.hours, currentTime);
+      const status = getPlaceStatus(place.hours, effectiveTime);
+      const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
       const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
         dayOfWeek,
         text: getHoursTextForDay(place.hours, dayOfWeek),
@@ -140,7 +141,7 @@ export default function WeekPage() {
 
   return (
     <div className="py-5">
-      <WeeklyGrid places={activePlaces} currentTime={currentTime} />
+      <WeeklyGrid places={activePlaces} currentTime={currentTime} timezone={activeCity?.timezone} />
       <div className="px-4 mt-4">
         <Link
           href={`/trip/${activeCity.id}/add`}
@@ -175,7 +176,7 @@ export default function WeekPage() {
             style={{ gridTemplateRows: showStashedPlaces ? '1fr' : '0fr' }}
           >
             <div className="overflow-hidden -mx-4">
-              <StashedGrid places={stashedPlaces} currentTime={currentTime} />
+              <StashedGrid places={stashedPlaces} currentTime={currentTime} timezone={activeCity?.timezone} />
             </div>
           </div>
         </div>

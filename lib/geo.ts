@@ -50,17 +50,27 @@ export function getCurrentPosition(): Promise<GeoPosition> {
   });
 }
 
-export async function reverseGeocode(pos: GeoPosition): Promise<string> {
+export interface ReverseGeocodeResult {
+  city: string;
+  timezone: string | null;
+}
+
+export async function reverseGeocode(
+  pos: GeoPosition,
+): Promise<ReverseGeocodeResult> {
   try {
     const res = await fetch(
       `/api/geo/reverse?lat=${pos.latitude}&lng=${pos.longitude}`,
     );
     if (res.ok) {
       const data = await res.json();
-      return data.city || 'Unknown';
+      return {
+        city: data.city || 'Unknown',
+        timezone: data.timezone ?? null,
+      };
     }
   } catch {}
-  return 'Unknown';
+  return { city: 'Unknown', timezone: null };
 }
 
 export function loadLastCity(): CityInfo | null {
@@ -89,6 +99,48 @@ export function loadHomeBase(): string | null {
 export function saveHomeBase(city: string): void {
   try {
     localStorage.setItem(HOME_BASE_KEY, city);
+  } catch {}
+}
+
+// ─── Timezone lookup ───
+
+export async function fetchTimezone(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/geo/timezone?lat=${lat}&lng=${lng}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.timezone ?? null;
+    }
+  } catch {}
+  return null;
+}
+
+// ─── Location mappings (detected city → user's chosen city) ───
+
+const MAPPING_KEY = 'opennow-location-mappings';
+
+export function loadLocationMappings(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(MAPPING_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getLocationMapping(cityName: string): string | null {
+  const mappings = loadLocationMappings();
+  return mappings[cityName.toLowerCase()] ?? null;
+}
+
+export function saveLocationMapping(from: string, to: string): void {
+  try {
+    const mappings = loadLocationMappings();
+    mappings[from.toLowerCase()] = to;
+    localStorage.setItem(MAPPING_KEY, JSON.stringify(mappings));
   } catch {}
 }
 

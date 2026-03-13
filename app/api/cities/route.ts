@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
   const cityName = req.nextUrl.searchParams.get('name');
   const lat = req.nextUrl.searchParams.get('lat');
   const lng = req.nextUrl.searchParams.get('lng');
+  const tz = req.nextUrl.searchParams.get('tz');
   const restock = req.nextUrl.searchParams.get('restock') === '1';
 
   try {
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
         cityName,
         lat ? Number(lat) : undefined,
         lng ? Number(lng) : undefined,
+        tz ?? undefined,
       );
     } else {
       city = await getActiveCityForUser(userId);

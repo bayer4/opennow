@@ -12,6 +12,7 @@ interface TripRow {
   city: string;
   latitude: number | null;
   longitude: number | null;
+  timezone: string | null;
   start_date: string | null;
   end_date: string | null;
   is_active: boolean;
@@ -58,6 +59,7 @@ function tripRowToCity(row: TripRow, places: Place[] = []): City {
     name: row.city || row.name,
     latitude: row.latitude ?? 0,
     longitude: row.longitude ?? 0,
+    timezone: row.timezone ?? undefined,
     places,
   };
 }
@@ -138,6 +140,7 @@ export async function getOrCreateCity(
   cityName: string,
   latitude?: number,
   longitude?: number,
+  timezone?: string,
 ): Promise<City> {
   const { data: existing, error: findErr } = await supabase()
     .from('trips')
@@ -152,26 +155,44 @@ export async function getOrCreateCity(
 
   if (existing) {
     tripRow = existing as TripRow;
-    if (!tripRow.is_active) {
-      await supabase()
-        .from('trips')
-        .update({ is_active: true })
-        .eq('id', tripRow.id);
-      tripRow.is_active = true;
+    const updates: Record<string, unknown> = {};
+    if (!tripRow.is_active) updates.is_active = true;
+    if (!tripRow.timezone && timezone) updates.timezone = timezone;
+    if (Object.keys(updates).length > 0) {
+      const { error: updErr } = await supabase().from('trips').update(updates).eq('id', tripRow.id);
+      if (!updErr) {
+        if (updates.is_active) tripRow.is_active = true;
+        if (updates.timezone) tripRow.timezone = timezone ?? null;
+      }
     }
   } else {
-    const { data: newRow, error: createErr } = await supabase()
+    const insertPayload: Record<string, unknown> = {
+      user_id: userId,
+      name: cityName,
+      city: cityName,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      is_active: true,
+    };
+    if (timezone) insertPayload.timezone = timezone;
+
+    let { data: newRow, error: createErr } = await supabase()
       .from('trips')
-      .insert({
-        user_id: userId,
-        name: cityName,
-        city: cityName,
-        latitude: latitude ?? null,
-        longitude: longitude ?? null,
-        is_active: true,
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    // Retry without timezone if column doesn't exist yet
+    if (createErr && timezone) {
+      delete insertPayload.timezone;
+      const retry = await supabase()
+        .from('trips')
+        .insert(insertPayload)
+        .select()
+        .single();
+      newRow = retry.data;
+      createErr = retry.error;
+    }
 
     if (createErr) throw createErr;
     tripRow = newRow as TripRow;

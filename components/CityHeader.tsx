@@ -20,13 +20,19 @@ export function CityHeader() {
 
   useEffect(() => setMounted(true), []);
 
+  const tz = activeCity?.timezone;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const day = mounted ? dayNames[currentTime.getDay()] : '';
+  const day = mounted
+    ? tz
+      ? currentTime.toLocaleDateString('en-US', { weekday: 'long', timeZone: tz })
+      : dayNames[currentTime.getDay()]
+    : '';
   const time = mounted
     ? currentTime.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
+        ...(tz ? { timeZone: tz } : {}),
       })
     : '';
 
