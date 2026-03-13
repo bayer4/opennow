@@ -177,14 +177,13 @@ export const PlaceCard = memo(function PlaceCard({
           ...(isUrgent && !isStashedView
             ? { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--status-closing) 25%, transparent)' }
             : {}),
-          ...(isStashedView ? { opacity: 0.65 } : {}),
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={showingActions && !confirmingDelete ? resetSwipe : undefined}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3" style={isStashedView ? { opacity: 0.55 } : undefined}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>

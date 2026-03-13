@@ -19,9 +19,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ city: 'Unknown', timezone });
   }
 
+  const referer = 'https://getopennow.com';
   try {
     const geoRes = await fetch(
       `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=locality%7Csublocality%7Cadministrative_area_level_3&key=${apiKey}`,
+      { headers: { Referer: referer } },
     );
 
     let city = 'Unknown';

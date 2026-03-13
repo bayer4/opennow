@@ -14,9 +14,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const referer = 'https://getopennow.com';
   try {
     const res = await fetch(
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${apiKey}`,
+      { headers: { Referer: referer } },
     );
     const data = await res.json();
     const loc = data.results?.[0]?.geometry?.location;
