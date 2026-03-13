@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect } from 'react';
 import { Place, PlaceStatus } from '@/types';
 import {
   getPlaceStatus,
@@ -41,18 +41,16 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
     container.scrollTo({ left: targetScroll, behavior: 'instant' });
   }, []);
 
-  const rows = useMemo(() => {
-    return places.map((place) => {
-      const status = getPlaceStatus(place.hours, effectiveTime);
-      const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
-      const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
-        dayOfWeek,
-        text: getHoursTextForDay(place.hours, dayOfWeek),
-        isToday: dayOfWeek === today,
-      }));
-      return { place, status, minutesLeft, dayCells };
-    });
-  }, [places, currentTime, today]);
+  const rows = places.map((place) => {
+    const status = getPlaceStatus(place.hours, effectiveTime);
+    const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
+    const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
+      dayOfWeek,
+      text: getHoursTextForDay(place.hours, dayOfWeek),
+      isToday: dayOfWeek === today,
+    }));
+    return { place, status, minutesLeft, dayCells };
+  });
 
   return (
     <div ref={scrollRef} className="overflow-x-auto">

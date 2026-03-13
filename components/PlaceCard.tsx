@@ -47,13 +47,13 @@ export const PlaceCard = memo(function PlaceCard({
   const [swipeX, setSwipeX] = useState(0);
   const [revealLevel, setRevealLevel] = useState<'none' | 'stash' | 'delete'>('none');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const isDragging = useRef(false);
+  const [dragging, setDragging] = useState(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (confirmingDelete) return;
     startXRef.current = e.touches[0].clientX;
     currentXRef.current = 0;
-    isDragging.current = false;
+    setDragging(false);
   }, [confirmingDelete]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -62,7 +62,7 @@ export const PlaceCard = memo(function PlaceCard({
     if (dx > 10) return;
     const clamped = Math.max(dx, MAX_SWIPE);
     currentXRef.current = clamped;
-    if (Math.abs(clamped) > 10) isDragging.current = true;
+    if (Math.abs(clamped) > 10) setDragging(true);
     setSwipeX(clamped);
   }, [confirmingDelete]);
 
@@ -80,7 +80,7 @@ export const PlaceCard = memo(function PlaceCard({
       setRevealLevel('none');
       setSwipeX(0);
     }
-    isDragging.current = false;
+    setDragging(false);
   }, [confirmingDelete]);
 
   const handleStash = useCallback(() => {
@@ -173,7 +173,7 @@ export const PlaceCard = memo(function PlaceCard({
           border: '1px solid var(--divider)',
           borderRadius: '1rem',
           transform: `translateX(${swipeX}px)`,
-          transitionDuration: isDragging.current ? '0ms' : '200ms',
+          transitionDuration: dragging ? '0ms' : '200ms',
           ...(isUrgent && !isStashedView
             ? { boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--status-closing) 25%, transparent)' }
             : {}),
