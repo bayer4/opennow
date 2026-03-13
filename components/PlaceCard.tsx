@@ -125,6 +125,14 @@ export const PlaceCard = memo(function PlaceCard({
     <div className="place-card relative overflow-hidden rounded-2xl">
       {/* Action buttons — pinned to right, revealed as card slides */}
       <div className="absolute top-0 right-0 bottom-0 flex items-stretch">
+        <button
+          onClick={handleDeleteTap}
+          className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
+          style={{ backgroundColor: '#ef4444', width: 88 }}
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
         {!isStashedView && (
           <button
             onClick={handleStash}
@@ -135,14 +143,6 @@ export const PlaceCard = memo(function PlaceCard({
             Stash
           </button>
         )}
-        <button
-          onClick={handleDeleteTap}
-          className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
-          style={{ backgroundColor: '#ef4444', width: 88 }}
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete
-        </button>
       </div>
 
       {/* Delete confirmation overlay */}
