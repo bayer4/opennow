@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useRef, useState, useCallback } from 'react';
-import { MapPin, ChevronRight, Archive, RotateCcw, Star } from 'lucide-react';
+import { MapPin, ChevronRight, Archive, RotateCcw, Star, Trash2 } from 'lucide-react';
 import { PlaceWithStatus } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { TimeLeft } from './TimeLeft';
@@ -26,7 +26,11 @@ const priceLabels: Record<number, string> = {
   4: '$$$$',
 };
 
-const SWIPE_THRESHOLD = 80;
+const STASH_THRESHOLD = 80;
+const DELETE_THRESHOLD = 160;
+const STASH_SNAP = -100;
+const DELETE_SNAP = -200;
+const MAX_SWIPE = -240;
 
 export const PlaceCard = memo(function PlaceCard({
   place,
@@ -34,80 +38,155 @@ export const PlaceCard = memo(function PlaceCard({
 }: PlaceCardProps) {
   const stashPlace = useAppStore((s) => s.stashPlace);
   const unstashPlace = useAppStore((s) => s.unstashPlace);
+  const removePlace = useAppStore((s) => s.removePlace);
   const isUrgent = place.statusInfo.status === 'closing_soon';
 
   const cardRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const [swipeX, setSwipeX] = useState(0);
-  const [showStashBtn, setShowStashBtn] = useState(false);
+  const [revealLevel, setRevealLevel] = useState<'none' | 'stash' | 'delete'>('none');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const isDragging = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (isStashedView) return;
+    if (confirmingDelete) return;
     startXRef.current = e.touches[0].clientX;
     currentXRef.current = 0;
     isDragging.current = false;
-  }, [isStashedView]);
+  }, [confirmingDelete]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (isStashedView) return;
+    if (confirmingDelete) return;
     const dx = e.touches[0].clientX - startXRef.current;
-    if (dx > 10) return; // ignore right swipe
-    const clamped = Math.max(dx, -140);
+    if (dx > 10) return;
+    const clamped = Math.max(dx, MAX_SWIPE);
     currentXRef.current = clamped;
     if (Math.abs(clamped) > 10) isDragging.current = true;
     setSwipeX(clamped);
-  }, [isStashedView]);
+  }, [confirmingDelete]);
 
   const handleTouchEnd = useCallback(() => {
-    if (isStashedView) return;
-    if (currentXRef.current < -SWIPE_THRESHOLD) {
-      setShowStashBtn(true);
-      setSwipeX(-100);
+    if (confirmingDelete) return;
+    const x = currentXRef.current;
+
+    if (isStashedView) {
+      if (x < -STASH_THRESHOLD) {
+        setRevealLevel('delete');
+        setSwipeX(STASH_SNAP);
+      } else {
+        setRevealLevel('none');
+        setSwipeX(0);
+      }
+    } else if (x < -DELETE_THRESHOLD) {
+      setRevealLevel('delete');
+      setSwipeX(DELETE_SNAP);
+    } else if (x < -STASH_THRESHOLD) {
+      setRevealLevel('stash');
+      setSwipeX(STASH_SNAP);
     } else {
-      setShowStashBtn(false);
+      setRevealLevel('none');
       setSwipeX(0);
     }
     isDragging.current = false;
-  }, [isStashedView]);
+  }, [isStashedView, confirmingDelete]);
 
   const handleStash = useCallback(() => {
     stashPlace(place.id);
     setSwipeX(0);
-    setShowStashBtn(false);
+    setRevealLevel('none');
   }, [place.id, stashPlace]);
 
   const handleUnstash = useCallback(() => {
     unstashPlace(place.id);
   }, [place.id, unstashPlace]);
 
+  const handleDeleteTap = useCallback(() => {
+    setConfirmingDelete(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    removePlace(place.id);
+  }, [place.id, removePlace]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setConfirmingDelete(false);
+  }, []);
+
   const resetSwipe = useCallback(() => {
     setSwipeX(0);
-    setShowStashBtn(false);
+    setRevealLevel('none');
+    setConfirmingDelete(false);
   }, []);
+
+  const showingActions = revealLevel !== 'none';
 
   return (
     <div className="place-card relative overflow-hidden rounded-2xl">
-      {/* Stash action behind the card */}
-      {!isStashedView && (
+      {/* Action buttons behind the card */}
+      <div className="absolute inset-0 flex items-stretch rounded-2xl overflow-hidden">
+        <div className="flex-1" />
+        {!isStashedView && (revealLevel === 'stash' || revealLevel === 'delete') && (
+          <button
+            onClick={handleStash}
+            className="flex items-center justify-center gap-2 text-white text-sm font-semibold"
+            style={{ backgroundColor: 'var(--accent)', width: 100 }}
+          >
+            <Archive className="w-4 h-4" />
+            Stash
+          </button>
+        )}
+        {revealLevel === 'delete' && (
+          <button
+            onClick={handleDeleteTap}
+            className="flex items-center justify-center gap-2 text-white text-sm font-semibold"
+            style={{ backgroundColor: '#ef4444', width: isStashedView ? 100 : 100 }}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        )}
+        {!isStashedView && revealLevel === 'none' && (
+          <div
+            className="flex items-center justify-center text-white/60"
+            style={{ backgroundColor: 'var(--accent)', width: 60 }}
+          >
+            <Archive className="w-4 h-4" />
+          </div>
+        )}
+        {isStashedView && revealLevel === 'none' && (
+          <div
+            className="flex items-center justify-center text-white/60"
+            style={{ backgroundColor: '#ef4444', width: 60 }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation overlay */}
+      {confirmingDelete && (
         <div
-          className="absolute inset-0 flex items-center justify-end rounded-2xl"
-          style={{ backgroundColor: 'var(--accent)' }}
+          className="absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-2xl"
+          style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--divider)' }}
         >
-          {showStashBtn ? (
-            <button
-              onClick={handleStash}
-              className="flex items-center gap-2 px-5 h-full text-white text-sm font-semibold"
-            >
-              <Archive className="w-4 h-4" />
-              Stash
-            </button>
-          ) : (
-            <div className="px-5 flex items-center gap-2 text-white/60 text-sm">
-              <Archive className="w-4 h-4" />
-            </div>
-          )}
+          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            Remove this place?
+          </span>
+          <button
+            onClick={handleDeleteConfirm}
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: '#ef4444' }}
+          >
+            Remove
+          </button>
+          <button
+            onClick={handleDeleteCancel}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium"
+            style={{ backgroundColor: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}
+          >
+            Cancel
+          </button>
         </div>
       )}
 
@@ -129,7 +208,7 @@ export const PlaceCard = memo(function PlaceCard({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={showStashBtn ? resetSwipe : undefined}
+        onClick={showingActions && !confirmingDelete ? resetSwipe : undefined}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
