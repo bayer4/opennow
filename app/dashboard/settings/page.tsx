@@ -113,7 +113,6 @@ export default function SettingsPage() {
     homeBase,
     setHomeBase,
     isPlanningMode,
-    isGuest,
     browseCity,
     exitPlanningMode,
     detectedCityName,
@@ -125,30 +124,27 @@ export default function SettingsPage() {
 
   const [homeModalOpen, setHomeModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
-  const [recentCities, setRecentCities] = useState<RecentCity[]>([]);
+  const guestCities: RecentCity[] = isGuestUser
+    ? loadAllGuestCities().map((c) => ({
+        name: c.name,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        placeCount: c.places.length,
+      }))
+    : [];
+  const [recentCities, setRecentCities] = useState<RecentCity[]>(guestCities);
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
   const [clearing, setClearing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (isGuestUser) {
-      const all = loadAllGuestCities();
-      setRecentCities(
-        all.map((c) => ({
-          name: c.name,
-          latitude: c.latitude,
-          longitude: c.longitude,
-          placeCount: c.places.length,
-        })),
-      );
-    } else {
-      fetch('/api/cities/all')
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.cities) setRecentCities(data.cities);
-        })
-        .catch(() => {});
-    }
+    if (isGuestUser) return;
+    fetch('/api/cities/all')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.cities) setRecentCities(data.cities);
+      })
+      .catch(() => {});
   }, [isGuestUser]);
 
   const handleHomeSelect = useCallback(

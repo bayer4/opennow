@@ -18,7 +18,6 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function StashedGrid({ places, currentTime, timezone }: { places: Place[]; currentTime: Date; timezone?: string }) {
   const effectiveTime = dateInTimezone(currentTime, timezone);
   const today = getDayOfWeek(effectiveTime);
-  const todayIdx = DAY_COLUMNS.indexOf(today as (typeof DAY_COLUMNS)[number]);
 
   const rows = places.map((place) => {
     const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
