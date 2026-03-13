@@ -70,15 +70,7 @@ export const PlaceCard = memo(function PlaceCard({
     if (confirmingDelete) return;
     const x = currentXRef.current;
 
-    if (isStashedView) {
-      if (x < -STASH_THRESHOLD) {
-        setRevealLevel('delete');
-        setSwipeX(-88);
-      } else {
-        setRevealLevel('none');
-        setSwipeX(0);
-      }
-    } else if (x < -DELETE_THRESHOLD) {
+    if (x < -DELETE_THRESHOLD) {
       setRevealLevel('delete');
       setSwipeX(DELETE_SNAP);
     } else if (x < -STASH_THRESHOLD) {
@@ -89,7 +81,7 @@ export const PlaceCard = memo(function PlaceCard({
       setSwipeX(0);
     }
     isDragging.current = false;
-  }, [isStashedView, confirmingDelete]);
+  }, [confirmingDelete]);
 
   const handleStash = useCallback(() => {
     stashPlace(place.id);
@@ -133,16 +125,17 @@ export const PlaceCard = memo(function PlaceCard({
           <Trash2 className="w-4 h-4" />
           Delete
         </button>
-        {!isStashedView && (
-          <button
-            onClick={handleStash}
-            className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
-            style={{ backgroundColor: 'var(--accent)', width: 88 }}
-          >
-            <Archive className="w-4 h-4" />
-            Stash
-          </button>
-        )}
+        <button
+          onClick={isStashedView ? handleUnstash : handleStash}
+          className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
+          style={{ backgroundColor: isStashedView ? '#22c55e' : 'var(--accent)', width: 88 }}
+        >
+          {isStashedView ? (
+            <><RotateCcw className="w-4 h-4" /> Unstash</>
+          ) : (
+            <><Archive className="w-4 h-4" /> Stash</>
+          )}
+        </button>
       </div>
 
       {/* Delete confirmation overlay */}
@@ -235,21 +228,8 @@ export const PlaceCard = memo(function PlaceCard({
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            {isStashedView ? (
-              <button
-                onClick={handleUnstash}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors duration-100"
-                style={{ backgroundColor: 'var(--bg-card-hover)', color: 'var(--accent)' }}
-              >
-                <RotateCcw className="w-3 h-3" />
-                Unstash
-              </button>
-            ) : (
-              <>
-                <TimeLeft statusInfo={place.statusInfo} />
-                <ChevronRight className="w-4 h-4 opacity-40" style={{ color: 'var(--text-secondary)' }} />
-              </>
-            )}
+            <TimeLeft statusInfo={place.statusInfo} />
+            <ChevronRight className="w-4 h-4 opacity-40" style={{ color: 'var(--text-secondary)' }} />
           </div>
         </div>
       </div>
