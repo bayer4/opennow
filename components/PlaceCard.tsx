@@ -26,11 +26,11 @@ const priceLabels: Record<number, string> = {
   4: '$$$$',
 };
 
-const STASH_THRESHOLD = 80;
-const DELETE_THRESHOLD = 160;
-const STASH_SNAP = -100;
-const DELETE_SNAP = -200;
-const MAX_SWIPE = -240;
+const STASH_THRESHOLD = 60;
+const DELETE_THRESHOLD = 130;
+const STASH_SNAP = -88;
+const DELETE_SNAP = -176;
+const MAX_SWIPE = -200;
 
 export const PlaceCard = memo(function PlaceCard({
   place,
@@ -73,7 +73,7 @@ export const PlaceCard = memo(function PlaceCard({
     if (isStashedView) {
       if (x < -STASH_THRESHOLD) {
         setRevealLevel('delete');
-        setSwipeX(STASH_SNAP);
+        setSwipeX(-88);
       } else {
         setRevealLevel('none');
         setSwipeX(0);
@@ -123,45 +123,26 @@ export const PlaceCard = memo(function PlaceCard({
 
   return (
     <div className="place-card relative overflow-hidden rounded-2xl">
-      {/* Action buttons behind the card */}
-      <div className="absolute inset-0 flex items-stretch rounded-2xl overflow-hidden">
-        <div className="flex-1" />
-        {!isStashedView && (revealLevel === 'stash' || revealLevel === 'delete') && (
+      {/* Action buttons — pinned to right, revealed as card slides */}
+      <div className="absolute top-0 right-0 bottom-0 flex items-stretch">
+        {!isStashedView && (
           <button
             onClick={handleStash}
-            className="flex items-center justify-center gap-2 text-white text-sm font-semibold"
-            style={{ backgroundColor: 'var(--accent)', width: 100 }}
+            className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
+            style={{ backgroundColor: 'var(--accent)', width: 88 }}
           >
             <Archive className="w-4 h-4" />
             Stash
           </button>
         )}
-        {revealLevel === 'delete' && (
-          <button
-            onClick={handleDeleteTap}
-            className="flex items-center justify-center gap-2 text-white text-sm font-semibold"
-            style={{ backgroundColor: '#ef4444', width: isStashedView ? 100 : 100 }}
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
-        )}
-        {!isStashedView && revealLevel === 'none' && (
-          <div
-            className="flex items-center justify-center text-white/60"
-            style={{ backgroundColor: 'var(--accent)', width: 60 }}
-          >
-            <Archive className="w-4 h-4" />
-          </div>
-        )}
-        {isStashedView && revealLevel === 'none' && (
-          <div
-            className="flex items-center justify-center text-white/60"
-            style={{ backgroundColor: '#ef4444', width: 60 }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </div>
-        )}
+        <button
+          onClick={handleDeleteTap}
+          className="flex items-center justify-center gap-1.5 text-white text-[13px] font-semibold"
+          style={{ backgroundColor: '#ef4444', width: 88 }}
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </button>
       </div>
 
       {/* Delete confirmation overlay */}
