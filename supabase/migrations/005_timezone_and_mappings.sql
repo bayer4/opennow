@@ -1,0 +1,3 @@
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS timezone TEXT;
+
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS location_mappings JSONB DEFAULT '{}';

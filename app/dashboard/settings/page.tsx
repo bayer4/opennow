@@ -22,6 +22,7 @@ import {
 import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
 import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
 import { FeedbackModal, FeedbackType } from '@/components/FeedbackModal';
+import { fetchTimezone } from '@/lib/geo';
 import { City } from '@/types';
 
 function SettingsRow({
@@ -90,6 +91,7 @@ function makeEmptyCity(
   lat: number,
   lng: number,
   userId = 'guest',
+  timezone?: string,
 ): City {
   return {
     id: name.toLowerCase().replace(/\s+/g, '-'),
@@ -97,6 +99,7 @@ function makeEmptyCity(
     name,
     latitude: lat,
     longitude: lng,
+    timezone,
     places: [],
   };
 }
@@ -160,20 +163,23 @@ export default function SettingsPage() {
     async (city: CityResult) => {
       setCityModalOpen(false);
 
-      // If the selected city matches the current active city, do nothing
       if (activeCity && activeCity.name.toLowerCase() === city.name.toLowerCase()) {
         return;
       }
+
+      const tz = await fetchTimezone(city.latitude, city.longitude);
 
       if (!isGuestUser) {
         try {
           const params = new URLSearchParams({ name: city.name });
           if (city.latitude) params.set('lat', String(city.latitude));
           if (city.longitude) params.set('lng', String(city.longitude));
+          if (tz) params.set('tz', tz);
           const res = await fetch(`/api/cities?${params}`);
           if (res.ok) {
             const data = await res.json();
             if (data.city) {
+              if (tz && !data.city.timezone) data.city.timezone = tz;
               browseCity(data.city);
               router.push('/dashboard');
               return;
@@ -182,15 +188,16 @@ export default function SettingsPage() {
         } catch {}
         const userId = (session!.user as Record<string, unknown>).id as string;
         browseCity(
-          makeEmptyCity(city.name, city.latitude, city.longitude, userId),
+          makeEmptyCity(city.name, city.latitude, city.longitude, userId, tz ?? undefined),
         );
       } else {
         const existing = loadGuestCityByName(city.name);
         if (existing) {
+          if (tz && !existing.timezone) existing.timezone = tz;
           browseCity(existing);
         } else {
           browseCity(
-            makeEmptyCity(city.name, city.latitude, city.longitude),
+            makeEmptyCity(city.name, city.latitude, city.longitude, 'guest', tz ?? undefined),
           );
         }
       }

@@ -1,4 +1,15 @@
 /**
+ * Return a Date whose local-time getters (getHours, getMinutes, getDay)
+ * reflect the given IANA timezone instead of the device timezone.
+ * If no timezone is provided, returns the original date.
+ */
+export function dateInTimezone(date: Date, timezone?: string): Date {
+  if (!timezone) return date;
+  const str = date.toLocaleString('en-US', { timeZone: timezone });
+  return new Date(str);
+}
+
+/**
  * Parse "HH:MM" to minutes since midnight.
  */
 export function parseTime(time: string): number {

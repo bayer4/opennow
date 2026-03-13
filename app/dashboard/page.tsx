@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { ChevronDown, ChevronUp, Plus, Archive, Check, MapPin } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus, sortPlacesForToday } from '@/lib/status-engine';
+import { dateInTimezone } from '@/lib/time-utils';
 import { PlaceCard } from '@/components/PlaceCard';
 import { PlaceSearch } from '@/components/PlaceSearch';
 import { PlaceWithStatus, PlaceSearchResult, PlaceDetails, Place } from '@/types';
@@ -111,16 +112,17 @@ export default function TodayPage() {
   const { activePlaces, closedPlaces, stashedPlaces } = useMemo(() => {
     if (!activeCity) return { activePlaces: [], closedPlaces: [], stashedPlaces: [] };
 
+    const effectiveTime = dateInTimezone(currentTime, activeCity.timezone);
     const stashed: PlaceWithStatus[] = [];
     const nonStashed = activeCity.places.filter((p) => {
       if (p.isStashed) {
-        stashed.push(enrichPlaceWithStatus(p, currentTime));
+        stashed.push(enrichPlaceWithStatus(p, effectiveTime));
         return false;
       }
       return true;
     });
 
-    const enriched = nonStashed.map((p) => enrichPlaceWithStatus(p, currentTime));
+    const enriched = nonStashed.map((p) => enrichPlaceWithStatus(p, effectiveTime));
     const sorted = sortPlacesForToday(enriched);
 
     const active: PlaceWithStatus[] = [];

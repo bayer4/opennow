@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus } from '@/lib/status-engine';
+import { dateInTimezone } from '@/lib/time-utils';
 import { MapView } from '@/components/MapView';
 
 export default function MapPage() {
@@ -12,9 +13,10 @@ export default function MapPage() {
 
   const enrichedPlaces = useMemo(() => {
     if (!activeCity) return [];
+    const effectiveTime = dateInTimezone(currentTime, activeCity.timezone);
     return activeCity.places
       .filter((p) => !p.isStashed)
-      .map((p) => enrichPlaceWithStatus(p, currentTime));
+      .map((p) => enrichPlaceWithStatus(p, effectiveTime));
   }, [activeCity, currentTime]);
 
   const center = useMemo(

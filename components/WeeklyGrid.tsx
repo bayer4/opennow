@@ -7,12 +7,12 @@ import {
   getHoursTextForDay,
   getMinutesRemaining,
 } from '@/lib/status-engine';
-import { getDayOfWeek, formatDurationClock } from '@/lib/time-utils';
+import { getDayOfWeek, formatDurationClock, dateInTimezone } from '@/lib/time-utils';
 
 interface WeeklyGridProps {
   places: Place[];
   currentTime: Date;
-
+  timezone?: string;
 }
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -26,10 +26,11 @@ const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
   closed_today: { bg: 'var(--status-closed-grid)', color: 'var(--status-closed)' },
 };
 
-export function WeeklyGrid({ places, currentTime }: WeeklyGridProps) {
+export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayMarkerRef = useRef<HTMLTableCellElement>(null);
-  const today = getDayOfWeek(currentTime);
+  const effectiveTime = dateInTimezone(currentTime, timezone);
+  const today = getDayOfWeek(effectiveTime);
   const todayIdx = DAY_COLUMNS.indexOf(today as (typeof DAY_COLUMNS)[number]);
 
   useEffect(() => {
@@ -42,8 +43,8 @@ export function WeeklyGrid({ places, currentTime }: WeeklyGridProps) {
 
   const rows = useMemo(() => {
     return places.map((place) => {
-      const status = getPlaceStatus(place.hours, currentTime);
-      const minutesLeft = getMinutesRemaining(place.hours, currentTime);
+      const status = getPlaceStatus(place.hours, effectiveTime);
+      const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
       const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
         dayOfWeek,
         text: getHoursTextForDay(place.hours, dayOfWeek),

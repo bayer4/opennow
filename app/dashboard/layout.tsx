@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { CityHeader } from '@/components/CityHeader';
 import { BottomNav } from '@/components/BottomNav';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -10,16 +10,25 @@ import {
   CitySearchModal,
   CityResult,
 } from '@/components/CitySearchModal';
-import { useAppStore, loadGuestCity } from '@/store/app-store';
+import {
+  useAppStore,
+  loadGuestCity,
+  loadAllGuestCities,
+} from '@/store/app-store';
 import { City } from '@/types';
 import {
   getCurrentPosition,
   reverseGeocode,
+  fetchTimezone,
   loadLastCity,
   saveLastCity,
   isAwayFromCity,
   loadHomeBase,
   saveHomeBase,
+  distanceMiles,
+  getLocationMapping,
+  saveLocationMapping,
+  loadLocationMappings,
 } from '@/lib/geo';
 
 function makeEmptyCity(
@@ -27,6 +36,7 @@ function makeEmptyCity(
   lat: number,
   lng: number,
   userId = 'guest',
+  timezone?: string,
 ): City {
   return {
     id: name.toLowerCase().replace(/\s+/g, '-'),
@@ -34,8 +44,17 @@ function makeEmptyCity(
     name,
     latitude: lat,
     longitude: lng,
+    timezone,
     places: [],
   };
+}
+
+interface MergePromptData {
+  detectedName: string;
+  detectedLat: number;
+  detectedLng: number;
+  detectedTimezone: string | null;
+  existingCityName: string;
 }
 
 export default function DashboardLayout({
@@ -54,10 +73,14 @@ export default function DashboardLayout({
   const didInit = useRef(false);
   const [needsCityPick, setNeedsCityPick] = useState(false);
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const [mergePrompt, setMergePrompt] = useState<MergePromptData | null>(null);
+
+  // ─── City setup (shared by normal flow, picker, retry, and merge) ───
 
   const handleCitySetup = useCallback(
-    async (cityName: string, lat: number, lng: number) => {
+    async (cityName: string, lat: number, lng: number, timezone?: string) => {
       setNeedsCityPick(false);
+      setMergePrompt(null);
       setLoading(true);
 
       saveLastCity({ city: cityName, latitude: lat, longitude: lng });
@@ -75,9 +98,10 @@ export default function DashboardLayout({
         const cityId = cityName.toLowerCase().replace(/\s+/g, '-');
         const saved = loadGuestCity(cityId);
         if (saved && saved.places.length > 0) {
+          if (timezone && !saved.timezone) saved.timezone = timezone;
           setActiveCity(saved);
         } else {
-          setActiveCity(makeEmptyCity(cityName, lat, lng));
+          setActiveCity(makeEmptyCity(cityName, lat, lng, 'guest', timezone ?? undefined));
         }
         return;
       }
@@ -101,6 +125,7 @@ export default function DashboardLayout({
           lat: String(lat),
           lng: String(lng),
         });
+        if (timezone) params.set('tz', timezone);
         const res = await fetch(`/api/cities?${params}`);
         if (res.ok) {
           const data = await res.json();
@@ -112,7 +137,7 @@ export default function DashboardLayout({
       } catch {}
 
       const userId = (session!.user as Record<string, unknown>).id as string;
-      setActiveCity(makeEmptyCity(cityName, lat, lng, userId));
+      setActiveCity(makeEmptyCity(cityName, lat, lng, userId, timezone ?? undefined));
     },
     [session, setActiveCity, setDetectedCityName, setLoading, setHomeBase],
   );
@@ -120,7 +145,8 @@ export default function DashboardLayout({
   const handleCityPickerSelect = useCallback(
     async (city: CityResult) => {
       setCityPickerOpen(false);
-      await handleCitySetup(city.name, city.latitude, city.longitude);
+      const tz = await fetchTimezone(city.latitude, city.longitude);
+      await handleCitySetup(city.name, city.latitude, city.longitude, tz ?? undefined);
     },
     [handleCitySetup],
   );
@@ -130,9 +156,14 @@ export default function DashboardLayout({
     setLoading(true);
     try {
       const pos = await getCurrentPosition();
-      const city = await reverseGeocode(pos);
-      if (city && city !== 'Unknown') {
-        await handleCitySetup(city, pos.latitude, pos.longitude);
+      const result = await reverseGeocode(pos);
+      if (result.city && result.city !== 'Unknown') {
+        await handleCitySetup(
+          result.city,
+          pos.latitude,
+          pos.longitude,
+          result.timezone ?? undefined,
+        );
       } else {
         setNeedsCityPick(true);
         setLoading(false);
@@ -143,6 +174,69 @@ export default function DashboardLayout({
     }
   }, [handleCitySetup, setLoading]);
 
+  // ─── Merge prompt handlers ───
+
+  const handleMergeUseExisting = useCallback(
+    async (prompt: MergePromptData) => {
+      saveLocationMapping(prompt.detectedName, prompt.existingCityName);
+
+      const isGuestUser = !session?.user;
+      if (!isGuestUser) {
+        const mappings = loadLocationMappings();
+        fetch('/api/user/location-mappings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mappings }),
+        }).catch(() => {});
+      }
+
+      // Find the existing city's coordinates
+      let lat = prompt.detectedLat;
+      let lng = prompt.detectedLng;
+      let tz = prompt.detectedTimezone ?? undefined;
+
+      if (isGuestUser) {
+        const existing = loadAllGuestCities().find(
+          (c) => c.name.toLowerCase() === prompt.existingCityName.toLowerCase(),
+        );
+        if (existing) {
+          lat = existing.latitude;
+          lng = existing.longitude;
+          tz = existing.timezone ?? tz;
+        }
+      }
+
+      await handleCitySetup(prompt.existingCityName, lat, lng, tz);
+    },
+    [session, handleCitySetup],
+  );
+
+  const handleMergeStartNew = useCallback(
+    async (prompt: MergePromptData) => {
+      saveLocationMapping(prompt.detectedName, prompt.detectedName);
+
+      const isGuestUser = !session?.user;
+      if (!isGuestUser) {
+        const mappings = loadLocationMappings();
+        fetch('/api/user/location-mappings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mappings }),
+        }).catch(() => {});
+      }
+
+      await handleCitySetup(
+        prompt.detectedName,
+        prompt.detectedLat,
+        prompt.detectedLng,
+        prompt.detectedTimezone ?? undefined,
+      );
+    },
+    [session, handleCitySetup],
+  );
+
+  // ─── Init effect ───
+
   useEffect(() => {
     if (status === 'loading') return;
     if (didInit.current) return;
@@ -152,14 +246,13 @@ export default function DashboardLayout({
     setGuest(isGuestUser);
 
     async function init() {
-      // If we already have a city (e.g. returning from add-places page),
-      // just refresh the detected city label without overwriting activeCity.
       if (useAppStore.getState().activeCity) {
         setLoading(false);
         try {
           const pos = await getCurrentPosition();
-          const city = await reverseGeocode(pos);
-          if (city && city !== 'Unknown') setDetectedCityName(city);
+          const result = await reverseGeocode(pos);
+          if (result.city && result.city !== 'Unknown')
+            setDetectedCityName(result.city);
         } catch {}
         return;
       }
@@ -167,6 +260,7 @@ export default function DashboardLayout({
       setLoading(true);
 
       let detectedCity: string | null = null;
+      let detectedTimezone: string | null = null;
       let userLat: number | undefined;
       let userLng: number | undefined;
       let shouldRestock = false;
@@ -175,7 +269,9 @@ export default function DashboardLayout({
         const pos = await getCurrentPosition();
         userLat = pos.latitude;
         userLng = pos.longitude;
-        detectedCity = await reverseGeocode(pos);
+        const result = await reverseGeocode(pos);
+        detectedCity = result.city;
+        detectedTimezone = result.timezone;
         setDetectedCityName(detectedCity);
 
         const lastCity = loadLastCity();
@@ -200,17 +296,84 @@ export default function DashboardLayout({
         }
       }
 
-      // If we couldn't determine the city, ask the user to pick one
-      const cityName =
+      const rawCityName =
         detectedCity && detectedCity !== 'Unknown' ? detectedCity : null;
 
-      if (!cityName) {
+      if (!rawCityName) {
         setNeedsCityPick(true);
         setLoading(false);
         return;
       }
 
-      // Initialize home base on first visit if not already set
+      // ─── Check location mappings ───
+      let cityName = rawCityName;
+      const mapping = getLocationMapping(rawCityName);
+
+      if (mapping) {
+        cityName = mapping;
+      } else if (userLat !== undefined && userLng !== undefined) {
+        // Check for nearby existing cities to offer a merge
+        let existingCities: Array<{
+          name: string;
+          latitude: number;
+          longitude: number;
+          placeCount: number;
+        }> = [];
+
+        if (isGuestUser) {
+          existingCities = loadAllGuestCities()
+            .filter((c) => c.places.length > 0)
+            .map((c) => ({
+              name: c.name,
+              latitude: c.latitude,
+              longitude: c.longitude,
+              placeCount: c.places.length,
+            }));
+        } else {
+          try {
+            const res = await fetch('/api/cities/all');
+            const data = await res.json();
+            if (data.cities) existingCities = data.cities;
+          } catch {}
+        }
+
+        const nearbyCities = existingCities
+          .filter((c) => {
+            if (c.name.toLowerCase() === rawCityName.toLowerCase()) return false;
+            if (c.placeCount === 0) return false;
+            const dist = distanceMiles(
+              { latitude: userLat!, longitude: userLng! },
+              { latitude: c.latitude, longitude: c.longitude },
+            );
+            return dist <= 30;
+          })
+          .sort((a, b) => {
+            const distA = distanceMiles(
+              { latitude: userLat!, longitude: userLng! },
+              { latitude: a.latitude, longitude: a.longitude },
+            );
+            const distB = distanceMiles(
+              { latitude: userLat!, longitude: userLng! },
+              { latitude: b.latitude, longitude: b.longitude },
+            );
+            return distA - distB;
+          });
+
+        if (nearbyCities.length > 0) {
+          setMergePrompt({
+            detectedName: rawCityName,
+            detectedLat: userLat,
+            detectedLng: userLng,
+            detectedTimezone: detectedTimezone,
+            existingCityName: nearbyCities[0].name,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // ─── Normal flow ───
+
       const currentHomeBase = loadHomeBase();
 
       if (!currentHomeBase) {
@@ -218,7 +381,6 @@ export default function DashboardLayout({
         setHomeBase(cityName);
       }
 
-      // Home base city never restocks
       const homeBase = currentHomeBase ?? cityName;
       const isHome = cityName.toLowerCase() === homeBase.toLowerCase();
       if (isHome) shouldRestock = false;
@@ -232,6 +394,8 @@ export default function DashboardLayout({
 
           if (saved && saved.places.length > 0) {
             const city = { ...saved };
+            if (detectedTimezone && !city.timezone)
+              city.timezone = detectedTimezone;
             if (shouldRestock) {
               city.places = city.places.map((p) =>
                 p.isStashed
@@ -242,7 +406,13 @@ export default function DashboardLayout({
             setActiveCity(city);
           } else {
             setActiveCity(
-              makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0),
+              makeEmptyCity(
+                cityName,
+                userLat ?? 0,
+                userLng ?? 0,
+                'guest',
+                detectedTimezone ?? undefined,
+              ),
             );
           }
         } else {
@@ -252,9 +422,8 @@ export default function DashboardLayout({
         return;
       }
 
-      // ─── Authenticated user: load city from Supabase ───
+      // ─── Authenticated user ───
 
-      // Try loading home base from server for auth users
       if (!currentHomeBase) {
         try {
           const hbRes = await fetch('/api/user/home-base');
@@ -270,11 +439,28 @@ export default function DashboardLayout({
         } catch {}
       }
 
+      // Load location mappings from server for auth users (merge with local)
+      try {
+        const mapRes = await fetch('/api/user/location-mappings');
+        if (mapRes.ok) {
+          const mapData = await mapRes.json();
+          if (mapData.mappings) {
+            const local = loadLocationMappings();
+            const merged = { ...mapData.mappings, ...local };
+            localStorage.setItem(
+              'opennow-location-mappings',
+              JSON.stringify(merged),
+            );
+          }
+        }
+      } catch {}
+
       try {
         const params = new URLSearchParams();
         params.set('name', cityName);
         if (userLat !== undefined) params.set('lat', String(userLat));
         if (userLng !== undefined) params.set('lng', String(userLng));
+        if (detectedTimezone) params.set('tz', detectedTimezone);
         if (shouldRestock) params.set('restock', '1');
 
         const res = await fetch(`/api/cities?${params.toString()}`);
@@ -286,17 +472,20 @@ export default function DashboardLayout({
             return;
           }
         }
-      } catch {
-        // API failed, fall through to fallback
-      }
+      } catch {}
 
-      // Fallback: empty city from geolocation
       const existing = useAppStore.getState().activeCity;
       if (!existing) {
         const userId = (session!.user as Record<string, unknown>)
           .id as string;
         setActiveCity(
-          makeEmptyCity(cityName, userLat ?? 0, userLng ?? 0, userId),
+          makeEmptyCity(
+            cityName,
+            userLat ?? 0,
+            userLng ?? 0,
+            userId,
+            detectedTimezone ?? undefined,
+          ),
         );
       } else {
         setLoading(false);
@@ -322,6 +511,8 @@ export default function DashboardLayout({
 
   const isLoading = useAppStore((s) => s.isLoading);
 
+  // ─── Loading state ───
+
   if (status === 'loading' || isLoading) {
     return (
       <ThemeProvider>
@@ -344,6 +535,61 @@ export default function DashboardLayout({
     );
   }
 
+  // ─── Merge prompt ───
+
+  if (mergePrompt) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-dvh flex flex-col items-center justify-center bg-[var(--bg-primary)] px-8">
+          <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-5">
+            <div
+              className="absolute inset-0 rounded-2xl"
+              style={{ backgroundColor: 'var(--accent)', opacity: 0.12 }}
+            />
+            <Navigation
+              className="w-7 h-7 relative"
+              style={{ color: 'var(--accent)' }}
+            />
+          </div>
+          <h1
+            className="text-[22px] font-bold tracking-tight mb-2 text-center"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            You&rsquo;re near {mergePrompt.existingCityName}
+          </h1>
+          <p
+            className="text-[14px] text-center mb-8 max-w-[300px] leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            We detected <strong style={{ color: 'var(--text-primary)' }}>{mergePrompt.detectedName}</strong> but
+            you have places saved in{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{mergePrompt.existingCityName}</strong>.
+          </p>
+          <button
+            onClick={() => handleMergeUseExisting(mergePrompt)}
+            className="w-full max-w-[280px] py-3 rounded-xl text-[15px] font-semibold transition-opacity active:opacity-80"
+            style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          >
+            Use my {mergePrompt.existingCityName} list
+          </button>
+          <button
+            onClick={() => handleMergeStartNew(mergePrompt)}
+            className="w-full max-w-[280px] mt-3 py-3 rounded-xl text-[15px] font-medium transition-opacity active:opacity-80"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+            }}
+          >
+            Start new list for {mergePrompt.detectedName}
+          </button>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // ─── City picker (geo denied) ───
+
   if (needsCityPick) {
     return (
       <ThemeProvider>
@@ -353,7 +599,10 @@ export default function DashboardLayout({
               className="absolute inset-0 rounded-2xl"
               style={{ backgroundColor: 'var(--accent)', opacity: 0.12 }}
             />
-            <MapPin className="w-7 h-7 relative" style={{ color: 'var(--accent)' }} />
+            <MapPin
+              className="w-7 h-7 relative"
+              style={{ color: 'var(--accent)' }}
+            />
           </div>
           <h1
             className="text-[22px] font-bold tracking-tight mb-2"
@@ -398,6 +647,8 @@ export default function DashboardLayout({
       </ThemeProvider>
     );
   }
+
+  // ─── Normal dashboard ───
 
   return (
     <ThemeProvider>
