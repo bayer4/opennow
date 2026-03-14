@@ -6,24 +6,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'city param required' }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'Server geocoding unavailable' },
-      { status: 500 },
-    );
-  }
-
-  const referer = 'https://getopennow.com';
   try {
     const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(city)}&key=${apiKey}`,
-      { headers: { Referer: referer } },
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}&limit=1`,
+      { headers: { 'User-Agent': 'OpenNow/1.0 (https://getopennow.com)' } },
     );
-    const data = await res.json();
-    const loc = data.results?.[0]?.geometry?.location;
-    if (loc) {
-      return NextResponse.json({ latitude: loc.lat, longitude: loc.lng });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.length > 0) {
+        return NextResponse.json({
+          latitude: Number(data[0].lat),
+          longitude: Number(data[0].lon),
+        });
+      }
     }
     return NextResponse.json({ latitude: null, longitude: null });
   } catch {
