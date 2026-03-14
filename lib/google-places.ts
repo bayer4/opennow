@@ -170,29 +170,18 @@ function parseGoogleHours(
 ): OperatingHours[] {
   if (!openingHours?.periods) return [];
 
-  const hoursByDay = new Map<number, OperatingHours>();
-
-  // Initialize all 7 days as closed
-  for (let d = 0; d < 7; d++) {
-    hoursByDay.set(d, {
-      id: `${placeId}-${d}`,
-      placeId,
-      dayOfWeek: d,
-      openTime: null,
-      closeTime: null,
-      isClosed: true,
-      isOvernight: false,
-    });
-  }
+  const result: OperatingHours[] = [];
+  const daysWithPeriods = new Set<number>();
+  let periodIdx = 0;
 
   for (const period of openingHours.periods) {
     const openDay = period.open.day;
+    daysWithPeriods.add(openDay);
     const openTime = `${String(period.open.hour).padStart(2, '0')}:${String(period.open.minute).padStart(2, '0')}`;
 
     if (!period.close) {
-      // 24-hour operation
-      hoursByDay.set(openDay, {
-        id: `${placeId}-${openDay}`,
+      result.push({
+        id: `${placeId}-${openDay}-${periodIdx++}`,
         placeId,
         dayOfWeek: openDay,
         openTime: '00:00',
@@ -207,8 +196,8 @@ function parseGoogleHours(
     const closeTime = `${String(period.close.hour).padStart(2, '0')}:${String(period.close.minute).padStart(2, '0')}`;
     const isOvernight = closeDay !== openDay;
 
-    hoursByDay.set(openDay, {
-      id: `${placeId}-${openDay}`,
+    result.push({
+      id: `${placeId}-${openDay}-${periodIdx++}`,
       placeId,
       dayOfWeek: openDay,
       openTime,
@@ -218,5 +207,19 @@ function parseGoogleHours(
     });
   }
 
-  return Array.from(hoursByDay.values());
+  for (let d = 0; d < 7; d++) {
+    if (!daysWithPeriods.has(d)) {
+      result.push({
+        id: `${placeId}-${d}-closed`,
+        placeId,
+        dayOfWeek: d,
+        openTime: null,
+        closeTime: null,
+        isClosed: true,
+        isOvernight: false,
+      });
+    }
+  }
+
+  return result;
 }

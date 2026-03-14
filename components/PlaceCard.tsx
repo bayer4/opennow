@@ -14,9 +14,17 @@ interface PlaceCardProps {
 }
 
 function formatTodayHours(place: PlaceWithStatus): string {
-  const h = place.todayHours;
-  if (!h || h.isClosed || !h.openTime || !h.closeTime) return 'Closed';
-  return `${formatTime12h(h.openTime)} – ${formatTime12h(h.closeTime)}`;
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const active = place.hours
+    .filter(h => h.dayOfWeek === dayOfWeek && !h.isClosed && h.openTime && h.closeTime)
+    .sort((a, b) => {
+      const aMin = parseInt(a.openTime!.split(':')[0]) * 60 + parseInt(a.openTime!.split(':')[1]);
+      const bMin = parseInt(b.openTime!.split(':')[0]) * 60 + parseInt(b.openTime!.split(':')[1]);
+      return aMin - bMin;
+    });
+  if (active.length === 0) return 'Closed';
+  return active.map(h => `${formatTime12h(h.openTime!)} – ${formatTime12h(h.closeTime!)}`).join(', ');
 }
 
 const priceLabels: Record<number, string> = {

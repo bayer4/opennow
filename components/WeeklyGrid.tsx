@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import { Place, PlaceStatus } from '@/types';
 import {
   getPlaceStatus,
-  getHoursTextForDay,
+  getHoursPeriodsForDay,
   getMinutesRemaining,
 } from '@/lib/status-engine';
 import { getDayOfWeek, formatDurationClock, dateInTimezone } from '@/lib/time-utils';
@@ -46,7 +46,7 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
     const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
     const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
       dayOfWeek,
-      text: getHoursTextForDay(place.hours, dayOfWeek),
+      periods: getHoursPeriodsForDay(place.hours, dayOfWeek),
       isToday: dayOfWeek === today,
     }));
     return { place, status, minutesLeft, dayCells };
@@ -130,14 +130,14 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
                 </span>
               </td>
 
-              {dayCells.map(({ dayOfWeek, text, isToday }) => {
-                const isClosed = text === 'Closed';
+              {dayCells.map(({ dayOfWeek, periods, isToday }) => {
+                const isClosed = periods.length === 1 && periods[0] === 'Closed';
                 const { bg, color } = gridStatusVars[status.status];
 
                 return (
                   <td
                     key={dayOfWeek}
-                    className="py-[7px] px-1.5 text-center text-[11px] leading-tight whitespace-nowrap"
+                    className="py-[7px] px-1 text-center text-[11px] leading-tight"
                     style={isToday ? { backgroundColor: bg, color } : undefined}
                   >
                     {isClosed ? (
@@ -151,15 +151,18 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
                         Closed
                       </span>
                     ) : (
-                      <span
+                      <div
+                        className="flex flex-col gap-0.5"
                         style={
                           isToday
                             ? { fontWeight: 600 }
                             : { color: 'var(--text-secondary)', opacity: 0.7 }
                         }
                       >
-                        {text}
-                      </span>
+                        {periods.map((p, i) => (
+                          <span key={i} className="whitespace-nowrap">{p}</span>
+                        ))}
+                      </div>
                     )}
                   </td>
                 );

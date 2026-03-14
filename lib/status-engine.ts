@@ -1,5 +1,5 @@
 import { OperatingHours, PlaceStatus, StatusInfo, Place, PlaceWithStatus } from '@/types';
-import { parseTime, nowMinutes, formatDuration, formatTime12h, getDayOfWeek, formatHoursRange } from './time-utils';
+import { parseTime, nowMinutes, formatDuration, formatTime12h, getDayOfWeek, formatHoursRange, formatHoursRangeTiny } from './time-utils';
 
 const CLOSING_SOON_THRESHOLD = 60; // minutes
 const OPENING_SOON_THRESHOLD = 60; // minutes
@@ -188,13 +188,41 @@ function getOvernightStatus(
 }
 
 /**
- * Get today's relevant operating hours entry for a place.
+ * Get today's most relevant operating hours entry for a place.
+ * Returns the currently-active period, or the next upcoming one, or the
+ * last one that already passed — in that priority order. Handles split
+ * hours (e.g. lunch + dinner) correctly.
  */
 export function getTodayHours(hours: OperatingHours[], now?: Date): OperatingHours | null {
   const currentDate = now ?? new Date();
   const currentDay = getDayOfWeek(currentDate);
-  const todayEntries = hours.filter(h => h.dayOfWeek === currentDay);
-  return todayEntries.length > 0 ? todayEntries[0] : null;
+  const currentMinutes = nowMinutes(currentDate);
+  const todayEntries = hours.filter(h => h.dayOfWeek === currentDay && !h.isClosed && h.openTime && h.closeTime);
+
+  if (todayEntries.length === 0) {
+    const closedEntry = hours.find(h => h.dayOfWeek === currentDay);
+    return closedEntry ?? null;
+  }
+
+  // Currently active period
+  for (const entry of todayEntries) {
+    const open = parseTime(entry.openTime!);
+    const close = parseTime(entry.closeTime!);
+    if (entry.isOvernight) {
+      if (currentMinutes >= open) return entry;
+    } else if (currentMinutes >= open && currentMinutes < close) {
+      return entry;
+    }
+  }
+
+  // Next upcoming period
+  const upcoming = todayEntries
+    .filter(e => parseTime(e.openTime!) > currentMinutes)
+    .sort((a, b) => parseTime(a.openTime!) - parseTime(b.openTime!));
+  if (upcoming.length > 0) return upcoming[0];
+
+  // All periods passed — return the last one
+  return todayEntries[todayEntries.length - 1];
 }
 
 /**
@@ -211,13 +239,29 @@ export function enrichPlaceWithStatus(place: Place, now?: Date): PlaceWithStatus
 /**
  * Get the display text for a place's hours on a given day of the week.
  * Returns "Closed" or a compact range like "9 AM–8 PM".
+ * For split hours shows "11 AM–2 PM, 5–10 PM".
  */
 export function getHoursTextForDay(hours: OperatingHours[], dayOfWeek: number): string {
   const entries = hours.filter(h => h.dayOfWeek === dayOfWeek);
   if (entries.length === 0) return 'Closed';
-  const active = entries.find(e => !e.isClosed && e.openTime && e.closeTime);
-  if (!active) return 'Closed';
-  return formatHoursRange(active.openTime!, active.closeTime!);
+  const active = entries
+    .filter(e => !e.isClosed && e.openTime && e.closeTime)
+    .sort((a, b) => parseTime(a.openTime!) - parseTime(b.openTime!));
+  if (active.length === 0) return 'Closed';
+  return active.map(e => formatHoursRange(e.openTime!, e.closeTime!)).join(', ');
+}
+
+/**
+ * Get an array of compact hour-range strings for a given day.
+ * Used by the weekly grid to stack split periods vertically.
+ * Returns ["Closed"] or ["9a–8p"] or ["12–2p", "5–10p"].
+ */
+export function getHoursPeriodsForDay(hours: OperatingHours[], dayOfWeek: number): string[] {
+  const active = hours
+    .filter(h => h.dayOfWeek === dayOfWeek && !h.isClosed && h.openTime && h.closeTime)
+    .sort((a, b) => parseTime(a.openTime!) - parseTime(b.openTime!));
+  if (active.length === 0) return ['Closed'];
+  return active.map(e => formatHoursRangeTiny(e.openTime!, e.closeTime!));
 }
 
 /**
