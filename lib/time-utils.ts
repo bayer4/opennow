@@ -75,6 +75,24 @@ export function formatHoursRange(openTime: string, closeTime: string): string {
 }
 
 /**
+ * Ultra-compact time for tight grid cells: "12p", "4:30p", "9a"
+ */
+function formatTimeTiny(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const suffix = h >= 12 ? 'p' : 'a';
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  if (m === 0) return `${hour12}${suffix}`;
+  return `${hour12}:${m.toString().padStart(2, '0')}${suffix}`;
+}
+
+/**
+ * Ultra-compact range for grid: "9a–8p", "4:30–10p"
+ */
+export function formatHoursRangeTiny(openTime: string, closeTime: string): string {
+  return `${formatTimeTiny(openTime)}–${formatTimeTiny(closeTime)}`;
+}
+
+/**
  * Clock-style duration: "0:15", "2:31" — matches the spreadsheet feel.
  */
 export function formatDurationClock(totalMinutes: number): string {

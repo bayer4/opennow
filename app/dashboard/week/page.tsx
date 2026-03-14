@@ -7,7 +7,7 @@ import { useAppStore } from '@/store/app-store';
 import { WeeklyGrid } from '@/components/WeeklyGrid';
 import { Place } from '@/types';
 import {
-  getHoursTextForDay,
+  getHoursPeriodsForDay,
   getMinutesRemaining,
 } from '@/lib/status-engine';
 import { getDayOfWeek, formatDurationClock, dateInTimezone } from '@/lib/time-utils';
@@ -23,7 +23,7 @@ function StashedGrid({ places, currentTime, timezone }: { places: Place[]; curre
     const minutesLeft = getMinutesRemaining(place.hours, effectiveTime);
     const dayCells = DAY_COLUMNS.map((dayOfWeek) => ({
       dayOfWeek,
-      text: getHoursTextForDay(place.hours, dayOfWeek),
+      periods: getHoursPeriodsForDay(place.hours, dayOfWeek),
       isToday: dayOfWeek === today,
     }));
     return { place, minutesLeft, dayCells };
@@ -62,23 +62,32 @@ function StashedGrid({ places, currentTime, timezone }: { places: Place[]; curre
               </span>
             </td>
 
-            {dayCells.map(({ dayOfWeek, text, isToday }) => {
-              const isClosed = text === 'Closed';
+            {dayCells.map(({ dayOfWeek, periods, isToday }) => {
+              const isClosed = periods.length === 1 && periods[0] === 'Closed';
               return (
                 <td
                   key={dayOfWeek}
-                  className="py-[7px] px-1.5 text-center text-[11px] leading-tight whitespace-nowrap"
+                  className="py-[7px] px-1 text-center text-[11px] leading-tight"
                   style={isToday ? { backgroundColor: 'var(--accent-dim)' } : undefined}
                 >
-                  <span
-                    style={{
-                      color: 'var(--text-secondary)',
-                      opacity: isClosed ? 0.3 : 0.7,
-                      fontWeight: isToday ? 600 : undefined,
-                    }}
-                  >
-                    {text}
-                  </span>
+                  {isClosed ? (
+                    <span style={{ color: 'var(--text-secondary)', opacity: 0.3 }}>
+                      Closed
+                    </span>
+                  ) : (
+                    <div
+                      className="flex flex-col gap-0.5"
+                      style={{
+                        color: 'var(--text-secondary)',
+                        opacity: 0.7,
+                        fontWeight: isToday ? 600 : undefined,
+                      }}
+                    >
+                      {periods.map((p, i) => (
+                        <span key={i} className="whitespace-nowrap">{p}</span>
+                      ))}
+                    </div>
+                  )}
                 </td>
               );
             })}
