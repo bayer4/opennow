@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import tzlookup from 'tz-lookup';
 
+interface NominatimAddress {
+  city?: string;
+  town?: string;
+  village?: string;
+  hamlet?: string;
+  suburb?: string;
+  municipality?: string;
+}
+
 export async function GET(req: NextRequest) {
   const lat = req.nextUrl.searchParams.get('lat');
   const lng = req.nextUrl.searchParams.get('lng');
@@ -14,71 +23,21 @@ export async function GET(req: NextRequest) {
     timezone = tzlookup(Number(lat), Number(lng));
   } catch {}
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ city: 'Unknown', timezone });
-  }
-
-  const referer = 'https://getopennow.com';
   try {
-    const geoRes = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&result_type=locality%7Csublocality%7Cadministrative_area_level_3&key=${apiKey}`,
-      { headers: { Referer: referer } },
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`,
+      { headers: { 'User-Agent': 'OpenNow/1.0 (https://getopennow.com)' } },
     );
 
     let city = 'Unknown';
-    if (geoRes.ok) {
-      const geoData = await geoRes.json();
-      if (geoData.status === 'OK' && geoData.results?.length > 0) {
-        city = extractCityName(geoData.results) ?? 'Unknown';
-      }
+    if (res.ok) {
+      const data = await res.json();
+      const addr: NominatimAddress = data.address ?? {};
+      city = addr.city || addr.town || addr.village || addr.hamlet || addr.suburb || addr.municipality || 'Unknown';
     }
 
     return NextResponse.json({ city, timezone });
   } catch {
     return NextResponse.json({ city: 'Unknown', timezone });
   }
-}
-
-interface AddressComponent {
-  long_name: string;
-  short_name: string;
-  types: string[];
-}
-
-interface GeoResult {
-  address_components?: AddressComponent[];
-  types?: string[];
-}
-
-/**
- * Extract the most specific locality from geocoding results.
- * Prefers: sublocality > locality > admin_area_level_3
- * Uses the first result (most precise) to find the component.
- */
-function extractCityName(results: GeoResult[]): string | null {
-  if (results.length === 0) return null;
-
-  const first = results[0];
-  const components = first.address_components ?? [];
-
-  const locality = components.find((c) => c.types.includes('locality'));
-  if (locality) return locality.long_name;
-
-  const sublocality = components.find((c) =>
-    c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
-  );
-  if (sublocality) return sublocality.long_name;
-
-  const adminL3 = components.find((c) =>
-    c.types.includes('administrative_area_level_3'),
-  );
-  if (adminL3) return adminL3.long_name;
-
-  const neighborhood = components.find((c) =>
-    c.types.includes('neighborhood'),
-  );
-  if (neighborhood) return neighborhood.long_name;
-
-  return null;
 }
