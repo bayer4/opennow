@@ -75,6 +75,30 @@ export default function DashboardLayout({
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const [mergePrompt, setMergePrompt] = useState<MergePromptData | null>(null);
 
+  // Background refresh: re-fetch hours from Google and update store
+  const refreshCityHours = useCallback(
+    (tripId: string, cityName: string, lat: number, lng: number, timezone?: string) => {
+      fetch('/api/places/refresh-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((result) => {
+          if (!result || result.updated === 0) return;
+          const params = new URLSearchParams({ name: cityName, lat: String(lat), lng: String(lng) });
+          if (timezone) params.set('tz', timezone);
+          return fetch(`/api/cities?${params}`);
+        })
+        .then((r) => r?.ok ? r.json() : null)
+        .then((data) => {
+          if (data?.city) setActiveCity(data.city);
+        })
+        .catch(() => {});
+    },
+    [setActiveCity],
+  );
+
   // ─── City setup (shared by normal flow, picker, retry, and merge) ───
 
   const handleCitySetup = useCallback(
@@ -131,6 +155,7 @@ export default function DashboardLayout({
           const data = await res.json();
           if (data.city) {
             setActiveCity(data.city);
+            refreshCityHours(data.city.id, cityName, lat, lng, timezone);
             return;
           }
         }
@@ -139,7 +164,7 @@ export default function DashboardLayout({
       const userId = (session!.user as Record<string, unknown>).id as string;
       setActiveCity(makeEmptyCity(cityName, lat, lng, userId, timezone ?? undefined));
     },
-    [session, setActiveCity, setDetectedCityName, setLoading, setHomeBase],
+    [session, setActiveCity, setDetectedCityName, setLoading, setHomeBase, refreshCityHours],
   );
 
   const handleCityPickerSelect = useCallback(
