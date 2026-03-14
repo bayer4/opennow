@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { Plus, ChevronDown, ChevronUp, Archive } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
@@ -14,6 +14,24 @@ import { getDayOfWeek, formatDurationClock, dateInTimezone } from '@/lib/time-ut
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+type WeekFilter = 'all' | 'open' | 'closing_soon';
+const WEEK_FILTER_KEY = 'opennow-week-filter';
+const FILTER_OPTIONS: Array<{ id: WeekFilter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'open', label: 'Open Now' },
+  { id: 'closing_soon', label: 'Closing Soon' },
+];
+
+function loadSavedWeekFilter(): WeekFilter {
+  if (typeof window === 'undefined') return 'all';
+  try {
+    const saved = localStorage.getItem(WEEK_FILTER_KEY);
+    if (saved === 'all' || saved === 'open' || saved === 'closing_soon') {
+      return saved;
+    }
+  } catch {}
+  return 'all';
+}
 
 function StashedGrid({ places, currentTime, timezone }: { places: Place[]; currentTime: Date; timezone?: string }) {
   const effectiveTime = dateInTimezone(currentTime, timezone);
@@ -118,6 +136,7 @@ export default function WeekPage() {
   const currentTime = useAppStore((s) => s.currentTime);
   const showStashedPlaces = useAppStore((s) => s.showStashedPlaces);
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
+  const [filter, setFilter] = useState<WeekFilter>(() => loadSavedWeekFilter());
 
   const activePlaces: Place[] = [];
   const stashedPlaces: Place[] = [];
@@ -133,6 +152,13 @@ export default function WeekPage() {
     toggleStashedPlaces();
   }, [toggleStashedPlaces]);
 
+  const handleFilterChange = useCallback((nextFilter: WeekFilter) => {
+    setFilter(nextFilter);
+    try {
+      localStorage.setItem(WEEK_FILTER_KEY, nextFilter);
+    } catch {}
+  }, []);
+
   if (!activeCity) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -143,7 +169,36 @@ export default function WeekPage() {
 
   return (
     <div className="py-5">
-      <WeeklyGrid places={activePlaces} currentTime={currentTime} timezone={activeCity?.timezone} />
+      <div className="px-4 mb-3">
+        <div
+          className="mx-auto w-fit flex items-center rounded-full p-1"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+          role="tablist"
+          aria-label="Week filters"
+        >
+          {FILTER_OPTIONS.map((option) => {
+            const active = filter === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleFilterChange(option.id)}
+                className="text-[11px] px-3 py-1 rounded-full transition-colors duration-150"
+                style={
+                  active
+                    ? { backgroundColor: 'var(--accent)', color: '#fff' }
+                    : { color: 'var(--text-secondary)' }
+                }
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <WeeklyGrid places={activePlaces} currentTime={currentTime} timezone={activeCity?.timezone} filter={filter} />
       <div className="px-4 mt-4">
         <Link
           href={`/trip/${activeCity.id}/add`}
