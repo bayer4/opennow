@@ -13,6 +13,7 @@ interface WeeklyGridProps {
   places: Place[];
   currentTime: Date;
   timezone?: string;
+  filter?: 'all' | 'open' | 'closing_soon';
 }
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -26,7 +27,7 @@ const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
   closed_today: { bg: 'var(--status-closed-grid)', color: 'var(--status-closed)' },
 };
 
-export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
+export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: WeeklyGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayMarkerRef = useRef<HTMLTableCellElement>(null);
   const effectiveTime = dateInTimezone(currentTime, timezone);
@@ -51,9 +52,32 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
     }));
     return { place, status, minutesLeft, dayCells };
   });
+  const filteredRows = rows.filter(({ status }) => {
+    if (filter === 'all') return true;
+    if (filter === 'open') return status.status === 'open';
+    return status.status === 'closing_soon';
+  });
 
   return (
     <div ref={scrollRef} className="overflow-x-auto">
+      {filteredRows.length === 0 && (
+        <div className="px-4 pb-3">
+          <div
+            className="text-center text-xs py-3 rounded-xl"
+            style={{
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-color-subtle)',
+              backgroundColor: 'var(--bg-secondary)',
+            }}
+          >
+            {filter === 'open'
+              ? 'No places open right now.'
+              : filter === 'closing_soon'
+                ? 'No places closing soon right now.'
+                : 'No places found.'}
+          </div>
+        </div>
+      )}
       <table
         className="w-full border-collapse"
         style={{ minWidth: 920, tableLayout: 'fixed' }}
@@ -110,7 +134,7 @@ export function WeeklyGrid({ places, currentTime, timezone }: WeeklyGridProps) {
         </thead>
 
         <tbody>
-          {rows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => (
+          {filteredRows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => (
             <tr
               key={place.id}
               style={{
