@@ -119,6 +119,7 @@ interface AppState {
   removePlace: (placeId: string) => void;
   stashPlace: (placeId: string) => void;
   unstashPlace: (placeId: string) => void;
+  toggleFavorite: (placeId: string) => void;
   restockAllStashed: () => void;
   clearAllData: () => void;
   toggleTheme: () => void;
@@ -269,6 +270,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         p.id === placeId
           ? { ...p, isStashed: false, stashedAt: undefined }
           : p,
+      ),
+    };
+    set({ activeCity: updated });
+    persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
+  },
+
+  toggleFavorite: (placeId) => {
+    const city = get().activeCity;
+    if (!city) return;
+    const place = city.places.find((p) => p.id === placeId);
+    if (!place) return;
+    const next = !place.isFavorite;
+    persistPlace(placeId, { isFavorite: next }, get().isGuest);
+    const updated = {
+      ...city,
+      places: city.places.map((p) =>
+        p.id === placeId ? { ...p, isFavorite: next } : p,
       ),
     };
     set({ activeCity: updated });

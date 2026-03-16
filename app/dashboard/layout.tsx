@@ -539,8 +539,15 @@ export default function DashboardLayout({
   ]);
 
   useEffect(() => {
-    const interval = setInterval(tick, 60_000);
-    return () => clearInterval(interval);
+    const interval = setInterval(tick, 15_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [tick]);
 
   const isLoading = useAppStore((s) => s.isLoading);

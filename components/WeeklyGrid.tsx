@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { Star } from 'lucide-react';
 import { Place, PlaceStatus } from '@/types';
 import {
   getPlaceStatus,
@@ -60,24 +61,6 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
 
   return (
     <div ref={scrollRef} className="overflow-x-auto">
-      {filteredRows.length === 0 && (
-        <div className="px-4 pb-3">
-          <div
-            className="text-center text-xs py-3 rounded-xl"
-            style={{
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-color-subtle)',
-              backgroundColor: 'var(--bg-secondary)',
-            }}
-          >
-            {filter === 'open'
-              ? 'No places open right now.'
-              : filter === 'closing_soon'
-                ? 'No places closing soon right now.'
-                : 'No places found.'}
-          </div>
-        </div>
-      )}
       <table
         className="w-full border-collapse"
         style={{ minWidth: 920, tableLayout: 'fixed' }}
@@ -147,10 +130,13 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
                 style={{ backgroundColor: 'var(--bg-primary)' }}
               >
                 <span
-                  className="text-[13px] font-medium truncate block"
+                  className="text-[13px] font-medium truncate flex items-center gap-1"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {place.name}
+                  {place.isFavorite && (
+                    <Star className="w-3 h-3 shrink-0" style={{ color: '#facc15', fill: '#facc15' }} />
+                  )}
                 </span>
               </td>
 
@@ -216,6 +202,24 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
 
         </tbody>
       </table>
+      {filteredRows.length === 0 && (
+        <div className="px-4 pt-4">
+          <div
+            className="text-center text-xs py-3 rounded-xl"
+            style={{
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border-color-subtle)',
+              backgroundColor: 'var(--bg-secondary)',
+            }}
+          >
+            {filter === 'open'
+              ? 'No places open right now.'
+              : filter === 'closing_soon'
+                ? 'No places closing soon right now.'
+                : 'No places found.'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronDown, ChevronUp, Archive } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Archive, Star } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { WeeklyGrid } from '@/components/WeeklyGrid';
 import { Place } from '@/types';
@@ -73,10 +73,13 @@ function StashedGrid({ places, currentTime, timezone }: { places: Place[]; curre
               style={{ backgroundColor: 'var(--bg-primary)' }}
             >
               <span
-                className="text-[13px] font-medium truncate block"
+                className="text-[13px] font-medium truncate flex items-center gap-1"
                 style={{ color: 'var(--text-primary)' }}
               >
                 {place.name}
+                {place.isFavorite && (
+                  <Star className="w-3 h-3 shrink-0" style={{ color: '#facc15', fill: '#facc15' }} />
+                )}
               </span>
             </td>
 

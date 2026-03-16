@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Clock, ListChecks } from 'lucide-react';
+import Image from 'next/image';
+import { MapPin } from 'lucide-react';
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -37,78 +38,60 @@ export default function LandingPage() {
       className="min-h-dvh flex flex-col"
       style={{ backgroundColor: 'var(--bg-primary)' }}
     >
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        {/* Logo area */}
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-          style={{ backgroundColor: 'var(--accent)' }}
-        >
-          <MapPin className="w-8 h-8 text-white" />
+      <div className="flex-1 flex flex-col items-center px-6 pt-12 pb-10">
+        {/* Tagline */}
+        <div className="flex items-center gap-2.5 mb-2">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: 'var(--accent)' }}
+          >
+            <MapPin className="w-5 h-5 text-white" />
+          </div>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            OpenNow
+          </h1>
         </div>
-
-        <h1
-          className="text-3xl font-bold mb-3"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          OpenNow
-        </h1>
         <p
-          className="text-center text-[15px] leading-relaxed max-w-[300px] mb-10"
+          className="text-center text-[15px] leading-relaxed max-w-[280px] mb-8"
           style={{ color: 'var(--text-secondary)' }}
         >
           All your places. One glance. Live hours.
         </p>
 
-        <div className="w-full max-w-[300px] flex flex-col gap-3 mb-10">
-          {[
-            {
-              icon: ListChecks,
-              label: 'Keep a running list',
-              sub: 'Add spots you want to hit in any city',
-            },
-            {
-              icon: Clock,
-              label: 'See what\u2019s open now',
-              sub: 'Live hours. One glance. No Googling.',
-            },
-            {
-              icon: MapPin,
-              label: 'Works wherever you are',
-              sub: 'Detects your city automatically',
-            },
-          ].map((f) => (
-            <div
-              key={f.label}
-              className="flex items-center gap-3 rounded-xl px-4 py-3"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color-subtle)',
-              }}
-            >
-              <f.icon
-                className="w-5 h-5 shrink-0"
-                style={{ color: 'var(--accent)' }}
+        {/* Phone mockup */}
+        <div className="relative mb-10 flex-shrink-0">
+          <div
+            className="relative rounded-[2rem] shadow-2xl"
+            style={{
+              backgroundColor: '#1a1a1a',
+              border: '3px solid #2a2a2a',
+              width: 240,
+              padding: 6,
+            }}
+          >
+            <div className="relative rounded-[1.4rem] overflow-hidden">
+              <Image
+                src="/hero-screenshot.png"
+                alt="OpenNow app showing live restaurant hours in Chicago"
+                width={460}
+                height={996}
+                priority
+                className="w-full h-auto block"
               />
-              <div>
-                <p
-                  className="text-[13px] font-medium"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {f.label}
-                </p>
-                <p
-                  className="text-[11px]"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {f.sub}
-                </p>
-              </div>
             </div>
-          ))}
+          </div>
+          {/* Subtle glow beneath the phone */}
+          <div
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-40 h-12 rounded-full blur-2xl opacity-30"
+            style={{ backgroundColor: 'var(--accent)' }}
+          />
         </div>
 
         {/* Auth buttons */}
-        <div className="w-full max-w-[300px] flex flex-col gap-3">
+        <div className="w-full max-w-[300px] flex flex-col gap-3 mt-auto">
           <button
             onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
             className="w-full flex items-center justify-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-semibold transition-transform duration-100 active:scale-[0.98]"
