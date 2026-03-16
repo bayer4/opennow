@@ -24,12 +24,6 @@ const OG_IMAGE = '/og-image.jpg';
 export const metadata: Metadata = {
   title: APP_NAME,
   description: OG_DESCRIPTION,
-  manifest: '/manifest.json',
-  icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
-    apple: '/icons/apple-touch-icon.svg',
-  },
   openGraph: {
     title: OG_TITLE,
     description: OG_DESCRIPTION,
