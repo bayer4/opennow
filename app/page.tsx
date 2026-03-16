@@ -122,7 +122,10 @@ export default function LandingPage() {
           </button>
 
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => {
+              try { localStorage.setItem('opennow-guest-chosen', '1'); } catch {}
+              router.push('/dashboard');
+            }}
             className="w-full rounded-xl px-4 py-3.5 text-[15px] font-medium transition-transform duration-100 active:scale-[0.98]"
             style={{
               backgroundColor: 'var(--bg-card)',

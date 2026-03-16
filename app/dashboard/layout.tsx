@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { MapPin, Navigation } from 'lucide-react';
 import { CityHeader } from '@/components/CityHeader';
 import { BottomNav } from '@/components/BottomNav';
@@ -63,6 +64,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const setActiveCity = useAppStore((s) => s.setActiveCity);
   const setDetectedCityName = useAppStore((s) => s.setDetectedCityName);
   const setLoading = useAppStore((s) => s.setLoading);
@@ -269,6 +271,16 @@ export default function DashboardLayout({
 
     const isGuestUser = !session?.user;
     setGuest(isGuestUser);
+
+    if (isGuestUser) {
+      const hasGuestData = loadAllGuestCities().length > 0;
+      const choseGuest = localStorage.getItem('opennow-guest-chosen');
+      const hasAddedBefore = localStorage.getItem('opennow-has-added-before');
+      if (!hasGuestData && !choseGuest && !hasAddedBefore) {
+        router.replace('/');
+        return;
+      }
+    }
 
     async function init() {
       if (useAppStore.getState().activeCity) {
@@ -530,6 +542,7 @@ export default function DashboardLayout({
   }, [
     session,
     status,
+    router,
     setActiveCity,
     setDetectedCityName,
     setLoading,
