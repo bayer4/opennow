@@ -34,6 +34,7 @@ export interface Place {
   photoReference?: string;
   isStashed: boolean;
   stashedAt?: string; // ISO timestamp of when it was stashed
+  isFavorite: boolean;
   isVisited: boolean;
   sortOrder: number;
   hours: OperatingHours[];

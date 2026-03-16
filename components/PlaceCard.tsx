@@ -47,6 +47,7 @@ export const PlaceCard = memo(function PlaceCard({
   const stashPlace = useAppStore((s) => s.stashPlace);
   const unstashPlace = useAppStore((s) => s.unstashPlace);
   const removePlace = useAppStore((s) => s.removePlace);
+  const toggleFavorite = useAppStore((s) => s.toggleFavorite);
   const isUrgent = place.statusInfo.status === 'closing_soon';
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -193,10 +194,24 @@ export const PlaceCard = memo(function PlaceCard({
       >
         <div className="flex items-start justify-between gap-3" style={isStashedView ? { opacity: 0.55 } : undefined}>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-1.5 mb-1">
               <h3 className="text-lg font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {place.name}
               </h3>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleFavorite(place.id); }}
+                className="shrink-0 p-0.5 -m-0.5 transition-transform active:scale-90"
+                aria-label={place.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Star
+                  className="w-4 h-4"
+                  style={
+                    place.isFavorite
+                      ? { color: '#facc15', fill: '#facc15' }
+                      : { color: 'var(--text-secondary)', opacity: 0.3 }
+                  }
+                />
+              </button>
             </div>
 
             <div className="flex items-center gap-2 mb-2">
@@ -246,6 +261,7 @@ export const PlaceCard = memo(function PlaceCard({
   return (
     prev.place.id === next.place.id &&
     prev.place.isStashed === next.place.isStashed &&
+    prev.place.isFavorite === next.place.isFavorite &&
     prev.place.statusInfo.status === next.place.statusInfo.status &&
     prev.place.statusInfo.timeLeft === next.place.statusInfo.timeLeft &&
     prev.place.statusInfo.opensIn === next.place.statusInfo.opensIn &&

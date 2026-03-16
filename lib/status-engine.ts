@@ -327,7 +327,6 @@ export function sortPlacesForToday(places: PlaceWithStatus[]): PlaceWithStatus[]
     const orderA = statusOrder[a.statusInfo.status];
     const orderB = statusOrder[b.statusInfo.status];
     if (orderA !== orderB) return orderA - orderB;
-    // Within the same status group, sort by urgency descending
     return b.statusInfo.urgency - a.statusInfo.urgency;
   });
 }

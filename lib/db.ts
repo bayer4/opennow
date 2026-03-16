@@ -79,8 +79,9 @@ function placeRowToModel(row: PlaceRow, hours: OperatingHours[] = []): Place {
     rating: row.rating ?? undefined,
     priceLevel: row.price_level ?? undefined,
     photoReference: row.photo_reference ?? undefined,
-    isStashed: row.is_stashed ?? row.is_priority ?? false,
+    isStashed: row.is_stashed ?? false,
     stashedAt: row.stashed_at ?? undefined,
+    isFavorite: row.is_priority ?? false,
     isVisited: row.is_visited,
     sortOrder: row.sort_order,
     hours,
@@ -238,7 +239,7 @@ export async function addPlaceToDB(place: Place): Promise<Place> {
       rating: place.rating ?? null,
       price_level: place.priceLevel ?? null,
       photo_reference: place.photoReference ?? null,
-      is_priority: false,
+      is_priority: place.isFavorite ?? false,
       is_stashed: place.isStashed ?? false,
       stashed_at: place.stashedAt ?? null,
       is_visited: place.isVisited,
@@ -278,6 +279,7 @@ export async function updatePlace(
   placeId: string,
   data: Partial<{
     isPriority: boolean;
+    isFavorite: boolean;
     isStashed: boolean;
     stashedAt: string | null;
     isVisited: boolean;
@@ -286,6 +288,7 @@ export async function updatePlace(
 ): Promise<void> {
   const update: Record<string, unknown> = {};
   if (data.isPriority !== undefined) update.is_priority = data.isPriority;
+  if (data.isFavorite !== undefined) update.is_priority = data.isFavorite;
   if (data.isStashed !== undefined) update.is_stashed = data.isStashed;
   if (data.stashedAt !== undefined) update.stashed_at = data.stashedAt;
   if (data.isVisited !== undefined) update.is_visited = data.isVisited;
