@@ -32,6 +32,7 @@ export async function POST(
       priceLevel: body.priceLevel,
       photoReference: body.photoReference,
       isStashed: body.isStashed ?? false,
+      isFavorite: body.isFavorite ?? false,
       isVisited: body.isVisited ?? false,
       sortOrder: body.sortOrder ?? 0,
       hours: body.hours ?? [],
