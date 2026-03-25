@@ -2,37 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import tzlookup from 'tz-lookup';
 
 interface NominatimAddress {
-  neighbourhood?: string;
-  borough?: string;
-  suburb?: string;
+  city?: string;
+  town?: string;
   village?: string;
   hamlet?: string;
-  town?: string;
-  city?: string;
+  suburb?: string;
   municipality?: string;
-}
-
-function stripSuffix(name: string): string {
-  return name
-    .replace(/\s+(Township|Borough|Municipality|CDP)$/i, '')
-    .trim();
-}
-
-function pickCityName(addr: NominatimAddress): string {
-  // Priority: village/borough (proper small towns) > city/town > suburb >
-  // hamlet/neighbourhood (can be subdivision names, used as last resort)
-  const raw =
-    addr.village ||
-    addr.borough ||
-    addr.city ||
-    addr.town ||
-    addr.suburb ||
-    addr.hamlet ||
-    addr.neighbourhood ||
-    addr.municipality ||
-    null;
-  if (!raw) return 'Unknown';
-  return stripSuffix(raw);
 }
 
 export async function GET(req: NextRequest) {
@@ -50,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`,
       { headers: { 'User-Agent': 'OpenNow/1.0 (https://getopennow.com)' } },
     );
 
@@ -58,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (res.ok) {
       const data = await res.json();
       const addr: NominatimAddress = data.address ?? {};
-      city = pickCityName(addr);
+      city = addr.city || addr.town || addr.village || addr.hamlet || addr.suburb || addr.municipality || 'Unknown';
     }
 
     return NextResponse.json({ city, timezone });

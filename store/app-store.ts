@@ -316,7 +316,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       localStorage.removeItem('opennow-home-base');
       localStorage.removeItem('opennow-has-added-before');
       localStorage.removeItem('opennow-guest-chosen');
-      localStorage.removeItem('opennow-geo-mappings');
     } catch {}
     gpsCitySnapshot = null;
     set({
