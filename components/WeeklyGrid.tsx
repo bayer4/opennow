@@ -117,7 +117,12 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
         </thead>
 
         <tbody>
-          {filteredRows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => (
+          {filteredRows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
+            const mapsQuery = place.latitude && place.longitude
+              ? `${place.latitude},${place.longitude}`
+              : encodeURIComponent(place.address || place.name);
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
+            return (
             <tr
               key={place.id}
               style={{
@@ -129,15 +134,18 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
                 className="sticky left-0 z-10 py-[7px] pl-4 pr-2"
                 style={{ backgroundColor: 'var(--bg-primary)' }}
               >
-                <span
-                  className="text-[13px] font-medium truncate flex items-center gap-1"
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[13px] font-medium truncate flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {place.name}
                   {place.isFavorite && (
                     <Star className="w-3 h-3 shrink-0" style={{ color: '#facc15', fill: '#facc15' }} />
                   )}
-                </span>
+                </a>
               </td>
 
               {dayCells.map(({ dayOfWeek, periods, isToday }) => {
@@ -198,7 +206,8 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
                 )}
               </td>
             </tr>
-          ))}
+          );
+          })}
 
         </tbody>
       </table>

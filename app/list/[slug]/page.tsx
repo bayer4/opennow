@@ -174,6 +174,10 @@ export default async function PublicListPage({
           <tbody>
             {rows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
               const { bg, color } = statusColors[status.status];
+              const mapsQuery = place.latitude && place.longitude
+                ? `${place.latitude},${place.longitude}`
+                : encodeURIComponent(place.address || place.name);
+              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
               return (
                 <tr
                   key={place.id}
@@ -187,12 +191,15 @@ export default async function PublicListPage({
                     className="sticky left-0 z-10 py-[7px] pl-4 pr-2"
                     style={{ backgroundColor: 'var(--bg-primary)' }}
                   >
-                    <span
-                      className="text-[13px] font-medium truncate block"
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[13px] font-medium truncate block hover:underline"
                       style={{ color: 'var(--text-primary)' }}
                     >
                       {place.name}
-                    </span>
+                    </a>
                     {place.cuisine && (
                       <span
                         className="text-[10px] block truncate"
