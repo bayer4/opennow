@@ -22,6 +22,7 @@ const OG_DESCRIPTION =
 const OG_IMAGE = '/og-image.jpg';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://getopennow.com'),
   title: APP_NAME,
   description: OG_DESCRIPTION,
   openGraph: {
