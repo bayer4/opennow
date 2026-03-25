@@ -178,7 +178,10 @@ export default async function PublicListPage({
               const destination = encodeURIComponent(
                 place.address ? `${place.name}, ${place.address}` : place.name,
               );
-              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+              const destinationPlaceId = place.googlePlaceId
+                ? `&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
+                : '';
+              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${destinationPlaceId}`;
               return (
                 <tr
                   key={place.id}
@@ -194,6 +197,8 @@ export default async function PublicListPage({
                   >
                     <a
                       href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-[13px] font-medium truncate block hover:underline"
                       style={{ color: 'var(--text-primary)' }}
                     >

@@ -121,7 +121,10 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
             const destination = encodeURIComponent(
               place.address ? `${place.name}, ${place.address}` : place.name,
             );
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+            const destinationPlaceId = place.googlePlaceId
+              ? `&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
+              : '';
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${destinationPlaceId}`;
             return (
             <tr
               key={place.id}
