@@ -175,13 +175,14 @@ export default async function PublicListPage({
           <tbody>
             {rows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
               const { bg, color } = statusColors[status.status];
-              const destination = encodeURIComponent(
+              const destinationName = encodeURIComponent(place.name);
+              const fullQuery = encodeURIComponent(
                 place.address ? `${place.name}, ${place.address}` : place.name,
               );
-              const destinationPlaceId = place.googlePlaceId
-                ? `&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
-                : '';
-              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${destinationPlaceId}`;
+              const mapsAppUrl = `comgooglemaps://?daddr=${fullQuery}&directionsmode=driving`;
+              const mapsUrl = place.googlePlaceId
+                ? `https://www.google.com/maps/dir/?api=1&destination=${destinationName}&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
+                : `https://www.google.com/maps/search/?api=1&query=${fullQuery}`;
               return (
                 <tr
                   key={place.id}
@@ -197,8 +198,8 @@ export default async function PublicListPage({
                   >
                     <a
                       href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      data-maps-link
+                      data-maps-app-url={mapsAppUrl}
                       className="text-[13px] font-medium truncate block hover:underline"
                       style={{ color: 'var(--text-primary)' }}
                     >
@@ -295,7 +296,7 @@ export default async function PublicListPage({
 
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}})()`,
+          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}var m=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||"");if(!m)return;var links=document.querySelectorAll("a[data-maps-link]");links.forEach(function(link){link.addEventListener("click",function(e){var webUrl=link.getAttribute("href");var appUrl=link.getAttribute("data-maps-app-url");if(!webUrl||!appUrl)return;e.preventDefault();var fallback=window.setTimeout(function(){window.location.href=webUrl},900);var onVis=function(){if(document.hidden){window.clearTimeout(fallback);document.removeEventListener("visibilitychange",onVis)}};document.addEventListener("visibilitychange",onVis);window.location.href=appUrl;});});})()`,
         }}
       />
 

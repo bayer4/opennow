@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, type MouseEvent } from 'react';
 import { Star } from 'lucide-react';
 import { Place, PlaceStatus } from '@/types';
 import {
@@ -27,6 +27,32 @@ const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
   closed: { bg: 'var(--status-closed-grid)', color: 'var(--status-closed)' },
   closed_today: { bg: 'var(--status-closed-grid)', color: 'var(--status-closed)' },
 };
+
+function handleGoogleMapsTap(
+  event: MouseEvent<HTMLAnchorElement>,
+  webUrl: string,
+  appUrl: string,
+) {
+  const ua = navigator.userAgent || '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+  if (!isMobile) return;
+
+  event.preventDefault();
+
+  const fallbackTimer = window.setTimeout(() => {
+    window.location.href = webUrl;
+  }, 900);
+
+  const onVisibility = () => {
+    if (document.hidden) {
+      window.clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    }
+  };
+
+  document.addEventListener('visibilitychange', onVisibility);
+  window.location.href = appUrl;
+}
 
 export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: WeeklyGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -118,13 +144,14 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
 
         <tbody>
           {filteredRows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
-            const destination = encodeURIComponent(
+            const destinationName = encodeURIComponent(place.name);
+            const fullQuery = encodeURIComponent(
               place.address ? `${place.name}, ${place.address}` : place.name,
             );
-            const destinationPlaceId = place.googlePlaceId
-              ? `&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
-              : '';
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}${destinationPlaceId}`;
+            const mapsAppUrl = `comgooglemaps://?daddr=${fullQuery}&directionsmode=driving`;
+            const mapsUrl = place.googlePlaceId
+              ? `https://www.google.com/maps/dir/?api=1&destination=${destinationName}&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
+              : `https://www.google.com/maps/search/?api=1&query=${fullQuery}`;
             return (
             <tr
               key={place.id}
@@ -139,6 +166,7 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
               >
                 <a
                   href={mapsUrl}
+                  onClick={(event) => handleGoogleMapsTap(event, mapsUrl, mapsAppUrl)}
                   className="text-[13px] font-medium truncate flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--text-primary)' }}
                 >
