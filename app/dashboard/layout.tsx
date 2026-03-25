@@ -205,7 +205,7 @@ export default function DashboardLayout({
 
   const handleMergeUseExisting = useCallback(
     async (prompt: MergePromptData) => {
-      saveLocationMapping(prompt.detectedName, prompt.existingCityName);
+      saveLocationMapping(prompt.detectedName, prompt.existingCityName, prompt.detectedLat, prompt.detectedLng);
 
       const isGuestUser = !session?.user;
       if (!isGuestUser) {
@@ -240,7 +240,7 @@ export default function DashboardLayout({
 
   const handleMergeStartNew = useCallback(
     async (prompt: MergePromptData) => {
-      saveLocationMapping(prompt.detectedName, prompt.detectedName);
+      saveLocationMapping(prompt.detectedName, prompt.detectedName, prompt.detectedLat, prompt.detectedLng);
 
       const isGuestUser = !session?.user;
       if (!isGuestUser) {
@@ -347,9 +347,9 @@ export default function DashboardLayout({
         return;
       }
 
-      // ─── Check location mappings ───
+      // ─── Check location mappings (name-based + proximity-based) ───
       let cityName = rawCityName;
-      const mapping = getLocationMapping(rawCityName);
+      const mapping = getLocationMapping(rawCityName, userLat, userLng);
 
       if (mapping) {
         cityName = mapping;

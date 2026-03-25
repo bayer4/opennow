@@ -121,6 +121,14 @@ export async function fetchTimezone(
 // ─── Location mappings (detected city → user's chosen city) ───
 
 const MAPPING_KEY = 'opennow-location-mappings';
+const GEO_MAPPING_KEY = 'opennow-geo-mappings';
+const PROXIMITY_RADIUS_MILES = 15;
+
+interface GeoMapping {
+  lat: number;
+  lng: number;
+  targetCity: string;
+}
 
 export function loadLocationMappings(): Record<string, string> {
   try {
@@ -131,17 +139,57 @@ export function loadLocationMappings(): Record<string, string> {
   }
 }
 
-export function getLocationMapping(cityName: string): string | null {
-  const mappings = loadLocationMappings();
-  return mappings[cityName.toLowerCase()] ?? null;
+function loadGeoMappings(): GeoMapping[] {
+  try {
+    const raw = localStorage.getItem(GEO_MAPPING_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
 
-export function saveLocationMapping(from: string, to: string): void {
+export function getLocationMapping(
+  cityName: string,
+  lat?: number,
+  lng?: number,
+): string | null {
+  const mappings = loadLocationMappings();
+  const nameMatch = mappings[cityName.toLowerCase()];
+  if (nameMatch) return nameMatch;
+
+  if (lat !== undefined && lng !== undefined) {
+    const geoMappings = loadGeoMappings();
+    for (const gm of geoMappings) {
+      const dist = distanceMiles(
+        { latitude: lat, longitude: lng },
+        { latitude: gm.lat, longitude: gm.lng },
+      );
+      if (dist <= PROXIMITY_RADIUS_MILES) return gm.targetCity;
+    }
+  }
+
+  return null;
+}
+
+export function saveLocationMapping(
+  from: string,
+  to: string,
+  lat?: number,
+  lng?: number,
+): void {
   try {
     const mappings = loadLocationMappings();
     mappings[from.toLowerCase()] = to;
     localStorage.setItem(MAPPING_KEY, JSON.stringify(mappings));
   } catch {}
+
+  if (lat !== undefined && lng !== undefined) {
+    try {
+      const geoMappings = loadGeoMappings();
+      geoMappings.push({ lat, lng, targetCity: to });
+      localStorage.setItem(GEO_MAPPING_KEY, JSON.stringify(geoMappings));
+    } catch {}
+  }
 }
 
 export async function forwardGeocode(
