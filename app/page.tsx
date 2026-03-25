@@ -1,6 +1,36 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { MapPin } from 'lucide-react';
 import { LandingActions } from '@/components/LandingActions';
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'OpenNow',
+  url: 'https://getopennow.com',
+  description:
+    'A pocket-sized shortlist for food travelers. Save the spots you want to try, see live hours at a glance, and always know where to go next.',
+  applicationCategory: 'TravelApplication',
+  operatingSystem: 'Any',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+  screenshot: 'https://getopennow.com/hero-screenshot.png',
+  featureList: [
+    'Save restaurants and cafes to a personal shortlist',
+    'See live opening hours at a glance',
+    'Know what is open right now in any city',
+    'Works on mobile and desktop',
+  ],
+};
 
 export default function LandingPage() {
   return (
@@ -8,6 +38,10 @@ export default function LandingPage() {
       className="min-h-dvh flex flex-col"
       style={{ backgroundColor: 'var(--bg-primary)' }}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="flex-1 flex flex-col items-center px-6 pt-12 pb-10">
         {/* Tagline */}
         <div className="flex items-center gap-2.5 mb-2">

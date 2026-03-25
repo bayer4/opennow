@@ -26,8 +26,20 @@ export const metadata: Metadata = {
   verification: {
     google: 'eLH0PSn8d7nuiGRTZCs1L5JDPkJXY8KgJ5N_ssaR1Qc',
   },
-  title: APP_NAME,
+  title: {
+    default: 'OpenNow — Save places, see live hours, know what\u2019s open',
+    template: '%s | OpenNow',
+  },
   description: OG_DESCRIPTION,
+  keywords: [
+    'restaurants open now',
+    'food travel app',
+    'live restaurant hours',
+    'places open near me',
+    'travel food list',
+    'restaurant shortlist',
+    'opening hours app',
+  ],
   openGraph: {
     title: OG_TITLE,
     description: OG_DESCRIPTION,
