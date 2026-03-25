@@ -296,7 +296,7 @@ export default async function PublicListPage({
 
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}var m=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||"");if(!m)return;var links=document.querySelectorAll("a[data-maps-link]");links.forEach(function(link){link.addEventListener("click",function(e){var webUrl=link.getAttribute("href");var appUrl=link.getAttribute("data-maps-app-url");if(!webUrl||!appUrl)return;e.preventDefault();var fallback=window.setTimeout(function(){window.location.href=webUrl},900);var onVis=function(){if(document.hidden){window.clearTimeout(fallback);document.removeEventListener("visibilitychange",onVis)}};document.addEventListener("visibilitychange",onVis);window.location.href=appUrl;});});})()`,
+          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}var m=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||"");if(!m)return;var links=document.querySelectorAll("a[data-maps-link]");links.forEach(function(link){link.addEventListener("click",function(e){var webUrl=link.getAttribute("href");var appUrl=link.getAttribute("data-maps-app-url");if(!webUrl||!appUrl)return;e.preventDefault();var fallback=window.setTimeout(function(){window.open(webUrl,"_blank","noopener,noreferrer")},900);var onVis=function(){if(document.hidden){window.clearTimeout(fallback);document.removeEventListener("visibilitychange",onVis)}};document.addEventListener("visibilitychange",onVis);window.location.href=appUrl;});});})()`,
         }}
       />
 
