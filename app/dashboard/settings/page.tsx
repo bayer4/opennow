@@ -18,7 +18,6 @@ import {
   Lightbulb,
   MessageCircle,
   Share2,
-  Pencil,
 } from 'lucide-react';
 import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
 import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
@@ -118,7 +117,6 @@ export default function SettingsPage() {
     exitPlanningMode,
     detectedCityName,
     clearAllData,
-    renameActiveCity,
   } = useAppStore();
   const router = useRouter();
 
@@ -307,17 +305,6 @@ export default function SettingsPage() {
           label="Current city"
           value={activeCity?.name ?? 'Not detected'}
           onClick={() => setCityModalOpen(true)}
-        />
-        <SettingsRow
-          icon={Pencil}
-          label="Rename city"
-          onClick={() => {
-            const current = activeCity?.name ?? '';
-            const newName = window.prompt('Rename this city to:', current);
-            if (newName && newName.trim() && newName.trim() !== current) {
-              renameActiveCity(newName.trim());
-            }
-          }}
         />
         <SettingsRow
           icon={Home}
