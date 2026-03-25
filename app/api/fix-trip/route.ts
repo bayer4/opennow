@@ -11,28 +11,42 @@ export async function GET() {
 
   const userId = (session.user as Record<string, unknown>).id as string;
   const supabase = getServiceClient();
+  const actions: string[] = [];
 
-  // Show all trips with place counts
-  const { data: trips } = await supabase
+  // Fix Philadelphia trip coordinates to actual center-city Philly
+  const { error: phillyErr } = await supabase
     .from('trips')
-    .select('id, name, city, latitude, longitude')
-    .eq('user_id', userId);
+    .update({ latitude: 39.9526, longitude: -75.1652 })
+    .eq('user_id', userId)
+    .eq('city', 'Philadelphia');
 
-  const tripInfo = [];
-  for (const trip of trips ?? []) {
-    const { count } = await supabase
-      .from('places')
-      .select('id', { count: 'exact', head: true })
-      .eq('trip_id', trip.id);
-    tripInfo.push({
-      id: trip.id,
-      name: trip.name,
-      city: trip.city,
-      lat: trip.latitude,
-      lng: trip.longitude,
-      placeCount: count,
-    });
-  }
+  actions.push(phillyErr
+    ? `Philly fix error: ${phillyErr.message}`
+    : 'Fixed Philadelphia coordinates to center-city (39.95, -75.17)');
 
-  return NextResponse.json({ trips: tripInfo });
+  const html = `<!DOCTYPE html>
+<html><head><title>Fixing...</title></head>
+<body>
+<p>Cleaning up... ${JSON.stringify(actions)}</p>
+<script>
+  // Clear stale caches
+  localStorage.removeItem('opennow-last-city');
+  localStorage.removeItem('opennow-geo-mappings');
+  localStorage.removeItem('opennow-home-base');
+
+  // Set mapping so "Upper Dublin Township" auto-resolves to Ambler
+  try {
+    var mappings = {};
+    try { mappings = JSON.parse(localStorage.getItem('opennow-location-mappings') || '{}'); } catch(e) {}
+    mappings['upper dublin township'] = 'Ambler';
+    localStorage.setItem('opennow-location-mappings', JSON.stringify(mappings));
+  } catch(e) {}
+
+  window.location.href = '/dashboard';
+</script>
+</body></html>`;
+
+  return new NextResponse(html, {
+    headers: { 'Content-Type': 'text/html' },
+  });
 }
