@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { City, Place } from '@/types';
+import { saveLastCity, loadLastCity, saveLocationMapping, loadLocationMappings, saveHomeBase } from '@/lib/geo';
 
 // ─── Guest multi-city localStorage ───
 
@@ -120,6 +121,7 @@ interface AppState {
   stashPlace: (placeId: string) => void;
   unstashPlace: (placeId: string) => void;
   toggleFavorite: (placeId: string) => void;
+  renameActiveCity: (newName: string) => void;
   restockAllStashed: () => void;
   clearAllData: () => void;
   toggleTheme: () => void;
@@ -291,6 +293,61 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     set({ activeCity: updated });
     persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
+  },
+
+  renameActiveCity: (newName) => {
+    const city = get().activeCity;
+    if (!city) return;
+    const oldName = city.name;
+    const isGuest = get().isGuest;
+
+    const updated = { ...city, name: newName };
+    set({ activeCity: updated, detectedCityName: newName });
+
+    // Update localStorage caches
+    const lastCity = loadLastCity();
+    if (lastCity && lastCity.city.toLowerCase() === oldName.toLowerCase()) {
+      saveLastCity({ ...lastCity, city: newName });
+    }
+
+    // Rewrite location mappings that pointed to the old name
+    const mappings = loadLocationMappings();
+    for (const [key, val] of Object.entries(mappings)) {
+      if (val === oldName) {
+        saveLocationMapping(key, newName);
+      }
+    }
+    // Also map old name → new name for future lookups
+    saveLocationMapping(oldName, newName);
+
+    // Update home base if it matched
+    const { homeBase } = get();
+    if (homeBase && homeBase.toLowerCase() === oldName.toLowerCase()) {
+      saveHomeBase(newName);
+      set({ homeBase: newName });
+    }
+
+    if (isGuest) {
+      // Re-save guest city under the new name/id
+      const newId = newName.toLowerCase().replace(/\s+/g, '-');
+      const oldId = oldName.toLowerCase().replace(/\s+/g, '-');
+      try {
+        const raw = localStorage.getItem('opennow-guest-cities');
+        if (raw) {
+          const cities: Record<string, City> = JSON.parse(raw);
+          delete cities[oldId];
+          cities[newId] = { ...updated, id: newId };
+          localStorage.setItem('opennow-guest-cities', JSON.stringify(cities));
+        }
+      } catch {}
+      set({ activeCity: { ...updated, id: newId } });
+    } else {
+      fetch('/api/cities', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: city.id, newName }),
+      }).catch(() => {});
+    }
   },
 
   restockAllStashed: () => {

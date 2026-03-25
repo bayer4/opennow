@@ -379,6 +379,16 @@ export async function createTrip(
   return { id: (row as TripRow).id };
 }
 
+// ─── Rename city ───
+
+export async function renameCity(tripId: string, newName: string): Promise<void> {
+  const { error } = await supabase()
+    .from('trips')
+    .update({ name: newName, city: newName })
+    .eq('id', tripId);
+  if (error) throw error;
+}
+
 // ─── Health check ───
 
 export async function isDBReady(): Promise<boolean> {
