@@ -23,6 +23,9 @@ const OG_IMAGE = '/og-image.jpg';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://getopennow.com'),
+  verification: {
+    google: 'eLH0PSn8d7nuiGRTZCs1L5JDPkJXY8KgJ5N_ssaR1Qc',
+  },
   title: APP_NAME,
   description: OG_DESCRIPTION,
   openGraph: {
