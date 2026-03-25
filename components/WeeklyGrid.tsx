@@ -118,10 +118,10 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
 
         <tbody>
           {filteredRows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
-            const mapsQuery = place.latitude && place.longitude
-              ? `${place.latitude},${place.longitude}`
-              : encodeURIComponent(place.address || place.name);
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
+            const destination = encodeURIComponent(
+              place.address ? `${place.name}, ${place.address}` : place.name,
+            );
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
             return (
             <tr
               key={place.id}
@@ -136,8 +136,6 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
               >
                 <a
                   href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="text-[13px] font-medium truncate flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--text-primary)' }}
                 >

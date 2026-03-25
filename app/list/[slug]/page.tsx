@@ -114,7 +114,7 @@ export default async function PublicListPage({
       </div>
 
       {/* Weekly hours grid */}
-      <div className="overflow-x-auto">
+      <div id="hours-scroll" className="overflow-x-auto">
         <table
           className="w-full border-collapse"
           style={{ minWidth: 920, tableLayout: 'fixed' }}
@@ -144,6 +144,7 @@ export default async function PublicListPage({
                 return (
                   <th
                     key={label}
+                    {...(isToday ? { 'data-today': '' } : {})}
                     className="py-2 px-1 text-center text-[10px] font-semibold uppercase tracking-widest"
                     style={{
                       color: isToday ? 'var(--accent)' : 'var(--text-secondary)',
@@ -174,10 +175,10 @@ export default async function PublicListPage({
           <tbody>
             {rows.map(({ place, status, minutesLeft, dayCells }, rowIdx) => {
               const { bg, color } = statusColors[status.status];
-              const mapsQuery = place.latitude && place.longitude
-                ? `${place.latitude},${place.longitude}`
-                : encodeURIComponent(place.address || place.name);
-              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
+              const destination = encodeURIComponent(
+                place.address ? `${place.name}, ${place.address}` : place.name,
+              );
+              const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
               return (
                 <tr
                   key={place.id}
@@ -193,8 +194,6 @@ export default async function PublicListPage({
                   >
                     <a
                       href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="text-[13px] font-medium truncate block hover:underline"
                       style={{ color: 'var(--text-primary)' }}
                     >
@@ -288,6 +287,12 @@ export default async function PublicListPage({
           </tbody>
         </table>
       </div>
+
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-140)}})()`,
+        }}
+      />
 
       {/* CTA */}
       <div className="px-4 max-w-4xl mx-auto">
