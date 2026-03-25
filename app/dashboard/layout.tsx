@@ -353,6 +353,7 @@ export default function DashboardLayout({
 
       if (mapping) {
         cityName = mapping;
+        setDetectedCityName(mapping);
       } else if (userLat !== undefined && userLng !== undefined) {
         // Check for nearby existing cities to offer a merge
         let existingCities: Array<{
