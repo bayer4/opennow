@@ -12,53 +12,43 @@ export async function GET() {
   const userId = (session.user as Record<string, unknown>).id as string;
   const supabase = getServiceClient();
 
-  // Find the trip that was renamed to "Ambler" and restore it
-  const { data: trips, error: findErr } = await supabase
+  // Delete any empty "Ambler" trips that were created as ghosts
+  const { data: trips } = await supabase
     .from('trips')
     .select('id, name, city')
     .eq('user_id', userId);
 
-  if (findErr) {
-    return NextResponse.json({ error: findErr.message }, { status: 500 });
-  }
-
-  const results: string[] = [];
-
+  const cleaned: string[] = [];
   for (const trip of trips ?? []) {
-    results.push(`Found trip: id=${trip.id}, name=${trip.name}, city=${trip.city}`);
-  }
-
-  // Fix: rename "Ambler" back to "Upper Dublin Township"
-  const amblerTrip = (trips ?? []).find(
-    (t) => t.city === 'Ambler' || t.name === 'Ambler',
-  );
-
-  if (amblerTrip) {
-    const { error: updateErr } = await supabase
-      .from('trips')
-      .update({ name: 'Upper Dublin Township', city: 'Upper Dublin Township' })
-      .eq('id', amblerTrip.id);
-
-    if (updateErr) {
-      results.push(`Error fixing: ${updateErr.message}`);
-    } else {
-      results.push(`Fixed trip ${amblerTrip.id}: renamed back to "Upper Dublin Township"`);
+    if (trip.city === 'Ambler' || trip.name === 'Ambler') {
+      const { count } = await supabase
+        .from('places')
+        .select('id', { count: 'exact', head: true })
+        .eq('trip_id', trip.id);
+      if (count === 0) {
+        await supabase.from('trips').delete().eq('id', trip.id);
+        cleaned.push(trip.id);
+      }
     }
   }
 
-  // Also delete any empty duplicate trips that may have been created
-  for (const trip of trips ?? []) {
-    if (trip.id === amblerTrip?.id) continue;
-    const { count } = await supabase
-      .from('places')
-      .select('id', { count: 'exact', head: true })
-      .eq('trip_id', trip.id);
+  // Return an HTML page that clears localStorage and redirects
+  const html = `<!DOCTYPE html>
+<html><head><title>Fixing...</title></head>
+<body>
+<p>Cleaning up...</p>
+<script>
+  // Clear stale cached data from the rename
+  localStorage.removeItem('opennow-last-city');
+  localStorage.removeItem('opennow-location-mappings');
+  localStorage.removeItem('opennow-geo-mappings');
+  localStorage.removeItem('opennow-home-base');
+  // Redirect to dashboard
+  window.location.href = '/dashboard';
+</script>
+</body></html>`;
 
-    if (count === 0) {
-      await supabase.from('trips').delete().eq('id', trip.id);
-      results.push(`Deleted empty trip: ${trip.name} (${trip.id})`);
-    }
-  }
-
-  return NextResponse.json({ results });
+  return new NextResponse(html, {
+    headers: { 'Content-Type': 'text/html' },
+  });
 }
