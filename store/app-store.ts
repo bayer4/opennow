@@ -116,6 +116,8 @@ interface AppState {
   browseCity: (city: City) => void;
   exitPlanningMode: () => void;
   addPlace: (place: Place) => void;
+  shareActiveCity: () => Promise<string | null>;
+  unshareActiveCity: () => Promise<boolean>;
   removePlace: (placeId: string) => void;
   stashPlace: (placeId: string) => void;
   unstashPlace: (placeId: string) => void;
@@ -231,6 +233,70 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ activeCity: updated });
     persistAfterMutation({ activeCity: updated, isGuest: get().isGuest });
     try { localStorage.setItem('opennow-has-added-before', '1'); } catch {}
+  },
+
+  shareActiveCity: async () => {
+    const state = get();
+    const city = state.activeCity;
+    if (!city || state.isGuest) return null;
+
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://getopennow.com';
+
+    if (city.shareSlug) {
+      return `${origin}/list/${city.shareSlug}`;
+    }
+
+    try {
+      const res = await fetch('/api/cities/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: city.id }),
+      });
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as { shareSlug?: string; url?: string };
+      const shareSlug = data.shareSlug;
+      if (!shareSlug) return null;
+
+      set({
+        activeCity: {
+          ...city,
+          shareSlug,
+          isPublic: true,
+        },
+      });
+
+      return data.url ?? `${origin}/list/${shareSlug}`;
+    } catch {
+      return null;
+    }
+  },
+
+  unshareActiveCity: async () => {
+    const state = get();
+    const city = state.activeCity;
+    if (!city || state.isGuest) return false;
+
+    try {
+      const res = await fetch('/api/cities/share', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: city.id }),
+      });
+      if (!res.ok) return false;
+
+      set({
+        activeCity: {
+          ...city,
+          shareSlug: undefined,
+          isPublic: false,
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   removePlace: (placeId) => {

@@ -18,6 +18,7 @@ import {
   Lightbulb,
   MessageCircle,
   Share2,
+  Link2Off,
 } from 'lucide-react';
 import { useAppStore, loadGuestCityByName, loadAllGuestCities } from '@/store/app-store';
 import { CitySearchModal, CityResult, RecentCity } from '@/components/CitySearchModal';
@@ -117,6 +118,8 @@ export default function SettingsPage() {
     exitPlanningMode,
     detectedCityName,
     clearAllData,
+    shareActiveCity,
+    unshareActiveCity,
   } = useAppStore();
   const router = useRouter();
 
@@ -135,7 +138,9 @@ export default function SettingsPage() {
   const [recentCities, setRecentCities] = useState<RecentCity[]>(guestCities);
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
   const [clearing, setClearing] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [appCopied, setAppCopied] = useState(false);
+  const [listCopied, setListCopied] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
 
   useEffect(() => {
     if (isGuestUser) return;
@@ -220,6 +225,65 @@ export default function SettingsPage() {
     clearAllData();
     router.push('/dashboard');
   }, [isGuestUser, clearAllData, router]);
+
+  const handleShareList = useCallback(async () => {
+    if (isGuestUser || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const url = await shareActiveCity();
+      if (!url) return;
+
+      const markCopied = () => {
+        setListCopied(true);
+        setTimeout(() => setListCopied(false), 2000);
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: `${activeCity?.name ?? 'My'} OpenNow list`,
+            text: `Check out my saved places in ${activeCity?.name ?? 'this city'}`,
+            url,
+          });
+          return;
+        }
+      } catch {}
+
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(url);
+          markCopied();
+          return;
+        }
+      } catch {}
+
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        markCopied();
+      } catch {}
+    } finally {
+      setShareBusy(false);
+    }
+  }, [isGuestUser, shareBusy, shareActiveCity, activeCity?.name]);
+
+  const handleUnshareList = useCallback(async () => {
+    if (isGuestUser || !activeCity?.shareSlug || shareBusy) return;
+    const ok = window.confirm('Stop sharing this city list? Existing links will stop working.');
+    if (!ok) return;
+    setShareBusy(true);
+    try {
+      await unshareActiveCity();
+    } finally {
+      setShareBusy(false);
+    }
+  }, [isGuestUser, activeCity?.shareSlug, shareBusy, unshareActiveCity]);
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -375,44 +439,73 @@ export default function SettingsPage() {
           border: '1px solid var(--border-color-subtle)',
         }}
       >
-        <SettingsRow
-          icon={Share2}
-          label={copied ? 'Link copied!' : 'Share OpenNow'}
-          onClick={async () => {
-            const url = window.location.origin;
-            const markCopied = () => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 2000);
-            };
-            const fallbackCopy = () => {
+        {!isGuestUser ? (
+          <>
+            <SettingsRow
+              icon={Share2}
+              label={
+                listCopied
+                  ? 'Shared link copied!'
+                  : shareBusy
+                    ? 'Sharing…'
+                    : activeCity?.shareSlug
+                      ? 'Share This List'
+                      : 'Create Share Link'
+              }
+              value={activeCity?.shareSlug ? `/list/${activeCity.shareSlug}` : undefined}
+              onClick={handleShareList}
+              disabled={!activeCity}
+            />
+            {activeCity?.shareSlug && (
+              <SettingsRow
+                icon={Link2Off}
+                label={shareBusy ? 'Stopping share…' : 'Stop Sharing This List'}
+                iconColor="var(--status-closing)"
+                labelColor="var(--status-closing)"
+                onClick={handleUnshareList}
+              />
+            )}
+          </>
+        ) : (
+          <SettingsRow
+            icon={Share2}
+            label={appCopied ? 'Link copied!' : 'Share OpenNow'}
+            onClick={async () => {
+              const url = window.location.origin;
+              const markCopied = () => {
+                setAppCopied(true);
+                setTimeout(() => setAppCopied(false), 2000);
+              };
+              const fallbackCopy = () => {
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = url;
+                  ta.style.position = 'fixed';
+                  ta.style.opacity = '0';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  markCopied();
+                } catch {}
+              };
               try {
-                const ta = document.createElement('textarea');
-                ta.value = url;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                markCopied();
+                if (navigator.share) {
+                  await navigator.share({ title: 'OpenNow', url });
+                  return;
+                }
               } catch {}
-            };
-            try {
-              if (navigator.share) {
-                await navigator.share({ title: 'OpenNow', url });
-                return;
-              }
-            } catch {}
-            try {
-              if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                await navigator.clipboard.writeText(url);
-                markCopied();
-                return;
-              }
-            } catch {}
-            fallbackCopy();
-          }}
-        />
+              try {
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                  await navigator.clipboard.writeText(url);
+                  markCopied();
+                  return;
+                }
+              } catch {}
+              fallbackCopy();
+            }}
+          />
+        )}
       </section>
 
       {/* Account */}

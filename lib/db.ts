@@ -10,6 +10,8 @@ interface TripRow {
   user_id: string;
   name: string;
   city: string;
+  share_slug: string | null;
+  is_public: boolean;
   latitude: number | null;
   longitude: number | null;
   timezone: string | null;
@@ -57,6 +59,8 @@ function tripRowToCity(row: TripRow, places: Place[] = []): City {
     id: row.id,
     userId: row.user_id,
     name: row.city || row.name,
+    shareSlug: row.share_slug ?? undefined,
+    isPublic: row.is_public,
     latitude: row.latitude ?? 0,
     longitude: row.longitude ?? 0,
     timezone: row.timezone ?? undefined,
@@ -217,6 +221,119 @@ export async function getActiveCityForUser(userId: string): Promise<City | null>
   const row = tripRow as TripRow;
   const places = await loadPlacesForTrip(row.id);
   return tripRowToCity(row, places);
+}
+
+export async function getCityByIdForUser(
+  userId: string,
+  tripId: string,
+): Promise<City | null> {
+  const { data: tripRow, error } = await supabase()
+    .from('trips')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('id', tripId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!tripRow) return null;
+
+  const row = tripRow as TripRow;
+  const places = await loadPlacesForTrip(row.id);
+  return tripRowToCity(row, places);
+}
+
+export async function shareCity(tripId: string, slug: string): Promise<void> {
+  const { error } = await supabase()
+    .from('trips')
+    .update({
+      share_slug: slug,
+      is_public: true,
+    })
+    .eq('id', tripId);
+
+  if (error) throw error;
+}
+
+export async function unshareCity(tripId: string): Promise<void> {
+  const { error } = await supabase()
+    .from('trips')
+    .update({
+      share_slug: null,
+      is_public: false,
+    })
+    .eq('id', tripId);
+
+  if (error) throw error;
+}
+
+export async function getPublicCityBySlug(slug: string): Promise<City | null> {
+  const { data: tripRow, error } = await supabase()
+    .from('trips')
+    .select('*')
+    .eq('share_slug', slug)
+    .eq('is_public', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!tripRow) return null;
+
+  const row = tripRow as TripRow;
+  const { data: placeRows, error: placesErr } = await supabase()
+    .from('places')
+    .select('*')
+    .eq('trip_id', row.id)
+    .or('is_stashed.is.null,is_stashed.eq.false')
+    .order('sort_order');
+
+  if (placesErr) throw placesErr;
+
+  const placeIds = (placeRows as PlaceRow[]).map((p) => p.id);
+  const hoursMap = new Map<string, OperatingHours[]>();
+
+  if (placeIds.length > 0) {
+    const { data: hoursRows, error: hoursErr } = await supabase()
+      .from('operating_hours')
+      .select('*')
+      .in('place_id', placeIds);
+
+    if (hoursErr) throw hoursErr;
+
+    for (const hoursRow of hoursRows as HoursRow[]) {
+      const list = hoursMap.get(hoursRow.place_id) ?? [];
+      list.push(hoursRowToModel(hoursRow));
+      hoursMap.set(hoursRow.place_id, list);
+    }
+  }
+
+  const places = (placeRows as PlaceRow[]).map((r) =>
+    placeRowToModel(r, hoursMap.get(r.id) ?? []),
+  );
+  return tripRowToCity(row, places);
+}
+
+export interface PublicCitySitemapEntry {
+  shareSlug: string;
+  createdAt: string;
+}
+
+export async function getPublicCitySitemapEntries(): Promise<
+  PublicCitySitemapEntry[]
+> {
+  const { data: rows, error } = await supabase()
+    .from('trips')
+    .select('share_slug, created_at')
+    .eq('is_public', true)
+    .not('share_slug', 'is', null);
+
+  if (error) throw error;
+  if (!rows) return [];
+
+  return (rows as Array<{ share_slug: string | null; created_at: string }>).flatMap(
+    (row) =>
+      row.share_slug
+        ? [{ shareSlug: row.share_slug, createdAt: row.created_at }]
+        : [],
+  );
 }
 
 // ─── Places ───

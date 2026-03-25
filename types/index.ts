@@ -48,6 +48,8 @@ export interface City {
   id: string;
   userId: string;
   name: string;
+  shareSlug?: string;
+  isPublic?: boolean;
   latitude: number;
   longitude: number;
   timezone?: string;

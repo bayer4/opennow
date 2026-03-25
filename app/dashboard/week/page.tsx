@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronDown, ChevronUp, Archive, Star } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Archive, Star, Share2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { WeeklyGrid } from '@/components/WeeklyGrid';
 import { Place } from '@/types';
@@ -139,7 +139,11 @@ export default function WeekPage() {
   const currentTime = useAppStore((s) => s.currentTime);
   const showStashedPlaces = useAppStore((s) => s.showStashedPlaces);
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
+  const shareActiveCity = useAppStore((s) => s.shareActiveCity);
+  const isGuest = useAppStore((s) => s.isGuest);
   const [filter, setFilter] = useState<WeekFilter>(() => loadSavedWeekFilter());
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const activePlaces: Place[] = [];
   const stashedPlaces: Place[] = [];
@@ -161,6 +165,53 @@ export default function WeekPage() {
       localStorage.setItem(WEEK_FILTER_KEY, nextFilter);
     } catch {}
   }, []);
+
+  const handleShareList = useCallback(async () => {
+    if (isGuest || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const url = await shareActiveCity();
+      if (!url) return;
+
+      const markCopied = () => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: `${activeCity?.name ?? 'My'} OpenNow list`,
+            text: `Check out my saved places in ${activeCity?.name ?? 'this city'}`,
+            url,
+          });
+          return;
+        }
+      } catch {}
+
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(url);
+          markCopied();
+          return;
+        }
+      } catch {}
+
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        markCopied();
+      } catch {}
+    } finally {
+      setShareBusy(false);
+    }
+  }, [isGuest, shareBusy, shareActiveCity, activeCity?.name]);
 
   if (!activeCity) {
     return (
@@ -202,10 +253,27 @@ export default function WeekPage() {
         </div>
       </div>
       <WeeklyGrid places={activePlaces} currentTime={currentTime} timezone={activeCity?.timezone} filter={filter} />
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 flex items-center gap-2">
+        {!isGuest && (
+          <button
+            type="button"
+            onClick={handleShareList}
+            disabled={shareBusy}
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 disabled:opacity-70"
+            style={{
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
+              backgroundColor: 'var(--bg-card)',
+              minWidth: 112,
+            }}
+          >
+            <Share2 className="w-4 h-4" />
+            {shareCopied ? 'Copied' : shareBusy ? 'Sharing…' : 'Share'}
+          </button>
+        )}
         <Link
           href={`/trip/${activeCity.id}/add`}
-          className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
+          className="flex items-center justify-center gap-1.5 flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150"
           style={{
             border: '1px dashed var(--border-color)',
             color: 'var(--accent)',

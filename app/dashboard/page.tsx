@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { ChevronDown, ChevronUp, Plus, Archive, Check, MapPin } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Archive, Check, MapPin, Share2 } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { enrichPlaceWithStatus, sortPlacesForToday } from '@/lib/status-engine';
 import { dateInTimezone } from '@/lib/time-utils';
@@ -16,6 +16,7 @@ export default function TodayPage() {
   const activeCity = useAppStore((s) => s.activeCity);
   const currentTime = useAppStore((s) => s.currentTime);
   const addPlace = useAppStore((s) => s.addPlace);
+  const shareActiveCity = useAppStore((s) => s.shareActiveCity);
   const isGuest = useAppStore((s) => s.isGuest);
   const showClosedPlaces = useAppStore((s) => s.showClosedPlaces);
   const showStashedPlaces = useAppStore((s) => s.showStashedPlaces);
@@ -23,6 +24,8 @@ export default function TodayPage() {
   const toggleStashedPlaces = useAppStore((s) => s.toggleStashedPlaces);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [sessionAddedIds, setSessionAddedIds] = useState<Set<string>>(new Set());
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [hasAddedBefore] = useState(() => {
     try {
       return localStorage.getItem('opennow-has-added-before') === '1';
@@ -150,6 +153,53 @@ export default function TodayPage() {
     toggleStashedPlaces();
   }, [toggleStashedPlaces]);
 
+  const handleShareList = useCallback(async () => {
+    if (isGuest || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const url = await shareActiveCity();
+      if (!url) return;
+
+      const markCopied = () => {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: `${activeCity?.name ?? 'My'} OpenNow list`,
+            text: `Check out my saved places in ${activeCity?.name ?? 'this city'}`,
+            url,
+          });
+          return;
+        }
+      } catch {}
+
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(url);
+          markCopied();
+          return;
+        }
+      } catch {}
+
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        markCopied();
+      } catch {}
+    } finally {
+      setShareBusy(false);
+    }
+  }, [isGuest, shareBusy, shareActiveCity, activeCity?.name]);
+
   if (!activeCity) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -250,14 +300,28 @@ export default function TodayPage() {
             place{openCount !== 1 ? 's' : ''} open now
           </span>
         </div>
-        <Link
-          href={`/trip/${activeCity.id}/add`}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150"
-          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add
-        </Link>
+        <div className="flex items-center gap-2">
+          {!isGuest && (
+            <button
+              type="button"
+              onClick={handleShareList}
+              disabled={shareBusy}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 disabled:opacity-70"
+              style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {shareCopied ? 'Copied' : shareBusy ? 'Sharing…' : 'Share'}
+            </button>
+          )}
+          <Link
+            href={`/trip/${activeCity.id}/add`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150"
+            style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
