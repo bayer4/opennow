@@ -179,7 +179,6 @@ export default async function PublicListPage({
               const fullQuery = encodeURIComponent(
                 place.address ? `${place.name}, ${place.address}` : place.name,
               );
-              const mapsAppUrl = `comgooglemaps://?daddr=${fullQuery}&directionsmode=driving`;
               const mapsUrl = place.googlePlaceId
                 ? `https://www.google.com/maps/dir/?api=1&destination=${destinationName}&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
                 : `https://www.google.com/maps/search/?api=1&query=${fullQuery}`;
@@ -198,8 +197,8 @@ export default async function PublicListPage({
                   >
                     <a
                       href={mapsUrl}
-                      data-maps-link
-                      data-maps-app-url={mapsAppUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-[13px] font-medium truncate block hover:underline"
                       style={{ color: 'var(--text-primary)' }}
                     >
@@ -296,7 +295,7 @@ export default async function PublicListPage({
 
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}var m=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent||"");if(!m)return;var links=document.querySelectorAll("a[data-maps-link]");links.forEach(function(link){link.addEventListener("click",function(e){var webUrl=link.getAttribute("href");var appUrl=link.getAttribute("data-maps-app-url");if(!webUrl||!appUrl)return;e.preventDefault();var fallback=window.setTimeout(function(){window.open(webUrl,"_blank","noopener,noreferrer")},900);var onVis=function(){if(document.hidden){window.clearTimeout(fallback);document.removeEventListener("visibilitychange",onVis)}};document.addEventListener("visibilitychange",onVis);window.location.href=appUrl;});});})()`,
+          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}})()`,
         }}
       />
 
