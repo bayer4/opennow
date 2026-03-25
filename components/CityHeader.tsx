@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore, useState, useRef, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Compass, Sun, Moon, User, X } from 'lucide-react';
@@ -14,7 +14,6 @@ export function CityHeader() {
   const isPlanningMode = useAppStore((s) => s.isPlanningMode);
   const detectedCityName = useAppStore((s) => s.detectedCityName);
   const exitPlanningMode = useAppStore((s) => s.exitPlanningMode);
-  const renameActiveCity = useAppStore((s) => s.renameActiveCity);
   const { data: session } = useSession();
   const router = useRouter();
   const mounted = useSyncExternalStore(
@@ -22,27 +21,6 @@ export function CityHeader() {
     () => true,
     () => false,
   );
-
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
-
-  const startEditing = () => {
-    setEditValue(activeCity?.name ?? '');
-    setEditing(true);
-  };
-
-  const commitRename = () => {
-    const trimmed = editValue.trim();
-    if (trimmed && trimmed !== activeCity?.name) {
-      renameActiveCity(trimmed);
-    }
-    setEditing(false);
-  };
 
   const tz = activeCity?.timezone;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -80,32 +58,12 @@ export function CityHeader() {
     >
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="min-w-0">
-          {editing ? (
-            <input
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={commitRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') setEditing(false);
-              }}
-              className="text-[17px] font-bold bg-transparent outline-none w-full"
-              style={{
-                color: 'var(--text-primary)',
-                borderBottom: '2px solid var(--accent)',
-                paddingBottom: 1,
-              }}
-            />
-          ) : (
-            <h1
-              className="text-[17px] font-bold truncate cursor-pointer"
-              style={{ color: 'var(--text-primary)' }}
-              onClick={startEditing}
-            >
-              {activeCity?.name ?? 'OpenNow'}
-            </h1>
-          )}
+          <h1
+            className="text-[17px] font-bold truncate"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {activeCity?.name ?? 'OpenNow'}
+          </h1>
           <div
             className="flex items-center gap-1.5 text-[13px]"
             style={{ color: isPlanningMode ? 'var(--accent)' : 'var(--text-secondary)' }}

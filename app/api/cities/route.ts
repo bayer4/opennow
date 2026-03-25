@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getOrCreateCity, getActiveCityForUser, restockStashedPlaces, renameCity } from '@/lib/db';
+import { getOrCreateCity, getActiveCityForUser, restockStashedPlaces } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -46,25 +46,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ city });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to load city';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
-
-export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  try {
-    const { tripId, newName } = await req.json();
-    if (!tripId || !newName) {
-      return NextResponse.json({ error: 'tripId and newName required' }, { status: 400 });
-    }
-    await renameCity(tripId, newName.trim());
-    return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to rename';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
