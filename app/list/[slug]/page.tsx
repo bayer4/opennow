@@ -290,7 +290,7 @@ export default async function PublicListPage({
 
       <script
         dangerouslySetInnerHTML={{
-          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-140)}})()`,
+          __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}})()`,
         }}
       />
 
