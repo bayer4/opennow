@@ -166,12 +166,6 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
               >
                 <a
                   href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(event) => {
-                    if (place.googlePlaceId) return;
-                    handleGoogleMapsTap(event, mapsUrl, mapsAppUrl);
-                  }}
                   className="text-[13px] font-medium truncate flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--text-primary)' }}
                 >
