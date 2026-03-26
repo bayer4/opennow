@@ -28,17 +28,29 @@ const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
   closed_today: { bg: 'var(--status-closed-grid)', color: 'var(--status-closed)' },
 };
 
-function openMaps(event: MouseEvent<HTMLAnchorElement>, mapsUrl: string) {
+function handleGoogleMapsTap(
+  event: MouseEvent<HTMLAnchorElement>,
+  webUrl: string,
+  appUrl: string,
+) {
   const ua = navigator.userAgent || '';
   const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
   if (!isMobile) return;
 
   event.preventDefault();
-  const opened = window.open(mapsUrl, '_blank');
-  if (!opened) {
-    // Popup blocked fallback on stricter mobile browsers.
-    window.location.href = mapsUrl;
-  }
+  const fallbackTimer = window.setTimeout(() => {
+    window.location.href = webUrl;
+  }, 900);
+
+  const onVisibility = () => {
+    if (document.hidden) {
+      window.clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    }
+  };
+
+  document.addEventListener('visibilitychange', onVisibility);
+  window.location.href = appUrl;
 }
 
 export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: WeeklyGridProps) {
@@ -135,6 +147,7 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
             const fullQuery = encodeURIComponent(
               place.address ? `${place.name}, ${place.address}` : place.name,
             );
+            const mapsAppUrl = `comgooglemaps://?daddr=${fullQuery}&directionsmode=driving`;
             const mapsUrl = place.googlePlaceId
               ? `https://www.google.com/maps/dir/?api=1&destination=${destinationName}&destination_place_id=${encodeURIComponent(place.googlePlaceId)}`
               : `https://www.google.com/maps/search/?api=1&query=${fullQuery}`;
@@ -152,9 +165,7 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
               >
                 <a
                   href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(event) => openMaps(event, mapsUrl)}
+                  onClick={(event) => handleGoogleMapsTap(event, mapsUrl, mapsAppUrl)}
                   className="text-[13px] font-medium truncate flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--text-primary)' }}
                 >
