@@ -19,6 +19,8 @@ interface WeeklyGridProps {
 
 const DAY_COLUMNS = [1, 2, 3, 4, 5, 6, 0] as const;
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MAP_LAUNCH_COOLDOWN_MS = 1000;
+let lastMobileMapsLaunchAt = 0;
 
 const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
   open: { bg: 'var(--status-open-grid)', color: 'var(--status-open)' },
@@ -38,6 +40,9 @@ function handleGoogleMapsTap(
   if (!isMobile) return;
 
   // Mobile: strict app handoff only. Avoid browser fallback loops/interstitials.
+  const now = Date.now();
+  if (now - lastMobileMapsLaunchAt < MAP_LAUNCH_COOLDOWN_MS) return;
+  lastMobileMapsLaunchAt = now;
   event.preventDefault();
   window.location.href = appUrl;
 }
