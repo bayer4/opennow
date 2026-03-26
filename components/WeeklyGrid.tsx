@@ -30,40 +30,15 @@ const gridStatusVars: Record<PlaceStatus, { bg: string; color: string }> = {
 
 function handleGoogleMapsTap(
   event: MouseEvent<HTMLAnchorElement>,
-  webUrl: string,
+  _webUrl: string,
   appUrl: string,
 ) {
   const ua = navigator.userAgent || '';
   const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
   if (!isMobile) return;
 
+  // Mobile: strict app handoff only. Avoid browser fallback loops/interstitials.
   event.preventDefault();
-  let cancelled = false;
-  const cancelFallback = () => {
-    cancelled = true;
-    window.clearTimeout(fallbackTimer);
-    document.removeEventListener('visibilitychange', onVisibility);
-    window.removeEventListener('pagehide', onHideLike);
-    window.removeEventListener('blur', onHideLike);
-  };
-  const fallbackTimer = window.setTimeout(() => {
-    if (cancelled) return;
-    // Keep OpenNow tab intact if fallback is needed.
-    window.open(webUrl, '_blank', 'noopener,noreferrer');
-  }, 900);
-
-  const onHideLike = () => {
-    cancelFallback();
-  };
-  const onVisibility = () => {
-    if (document.hidden) {
-      cancelFallback();
-    }
-  };
-
-  document.addEventListener('visibilitychange', onVisibility);
-  window.addEventListener('pagehide', onHideLike);
-  window.addEventListener('blur', onHideLike);
   window.location.href = appUrl;
 }
 
