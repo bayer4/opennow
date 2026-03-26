@@ -38,18 +38,32 @@ function handleGoogleMapsTap(
   if (!isMobile) return;
 
   event.preventDefault();
+  let cancelled = false;
+  const cancelFallback = () => {
+    cancelled = true;
+    window.clearTimeout(fallbackTimer);
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', onHideLike);
+    window.removeEventListener('blur', onHideLike);
+  };
   const fallbackTimer = window.setTimeout(() => {
-    window.location.href = webUrl;
+    if (cancelled) return;
+    // Keep OpenNow tab intact if fallback is needed.
+    window.open(webUrl, '_blank', 'noopener,noreferrer');
   }, 900);
 
+  const onHideLike = () => {
+    cancelFallback();
+  };
   const onVisibility = () => {
     if (document.hidden) {
-      window.clearTimeout(fallbackTimer);
-      document.removeEventListener('visibilitychange', onVisibility);
+      cancelFallback();
     }
   };
 
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', onHideLike);
+  window.addEventListener('blur', onHideLike);
   window.location.href = appUrl;
 }
 
