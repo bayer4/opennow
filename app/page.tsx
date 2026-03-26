@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { MapPin } from 'lucide-react';
 import { LandingActions } from '@/components/LandingActions';
+import { getPublicCitySlugs } from '@/lib/db';
 
 export const metadata: Metadata = {
   alternates: {
@@ -32,7 +34,11 @@ const jsonLd = {
   ],
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const popularCities = (await getPublicCitySlugs().catch(() => []))
+    .sort((a, b) => b.placeCount - a.placeCount)
+    .slice(0, 6);
+
   return (
     <div
       className="min-h-dvh flex flex-col"
@@ -94,6 +100,33 @@ export default function LandingPage() {
         </div>
 
         <LandingActions />
+
+        {popularCities.length > 0 && (
+          <section className="w-full max-w-[420px] mt-8">
+            <h2
+              className="text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Popular cities
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {popularCities.map((city) => (
+                <Link
+                  key={city.citySlug}
+                  href={`/open-now/${city.citySlug}`}
+                  className="text-[12px] px-2.5 py-1.5 rounded-lg"
+                  style={{
+                    color: 'var(--text-primary)',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color-subtle)',
+                  }}
+                >
+                  {city.cityName}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

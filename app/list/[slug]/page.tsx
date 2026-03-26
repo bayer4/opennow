@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MapPin } from 'lucide-react';
-import { getPublicCityBySlug } from '@/lib/db';
+import { cityToSlug, getPublicCityBySlug, getPublicCitySlugs } from '@/lib/db';
 import {
   getPlaceStatus,
   getHoursPeriodsForDay,
@@ -68,6 +68,10 @@ export default async function PublicListPage({
   const { slug } = await params;
   const city = await getPublicCityBySlug(slug);
   if (!city) notFound();
+  const cityDirectoryEntries = await getPublicCitySlugs().catch(() => []);
+  const cityOpenNowEntry = cityDirectoryEntries.find(
+    (entry) => entry.citySlug === cityToSlug(city.name),
+  );
 
   const effectiveNow = dateInTimezone(new Date(), city.timezone);
   const today = getDayOfWeek(effectiveNow);
@@ -298,6 +302,22 @@ export default async function PublicListPage({
           __html: `(function(){var c=document.getElementById("hours-scroll");var t=c&&c.querySelector("[data-today]");if(c&&t){c.scrollLeft=Math.max(0,t.offsetLeft-172)}})()`,
         }}
       />
+
+      {cityOpenNowEntry && (
+        <div className="px-4 max-w-4xl mx-auto mt-6">
+          <Link
+            href={`/open-now/${cityOpenNowEntry.citySlug}`}
+            className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color-subtle)',
+            }}
+          >
+            See more places open now in {city.name}
+          </Link>
+        </div>
+      )}
 
       {/* CTA */}
       <div className="px-4 max-w-4xl mx-auto">

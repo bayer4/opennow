@@ -52,6 +52,32 @@ interface HoursRow {
   is_overnight: boolean;
 }
 
+export interface PublicCitySlugEntry {
+  citySlug: string;
+  cityName: string;
+  placeCount: number;
+}
+
+export interface PublicCityPlacesResult {
+  cityName: string;
+  timezone?: string;
+  places: Place[];
+}
+
+export interface PublicCitySharedListEntry {
+  shareSlug: string;
+  createdAt: string;
+}
+
+export function cityToSlug(cityName: string): string {
+  return cityName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 // ─── Converters ───
 
 function tripRowToCity(row: TripRow, places: Place[] = []): City {
@@ -136,6 +162,51 @@ async function loadPlacesForTrip(tripId: string): Promise<Place[]> {
   return (placeRows as PlaceRow[]).map((r) =>
     placeRowToModel(r, hoursMap.get(r.id) ?? []),
   );
+}
+
+async function loadPublicPlacesForTrip(tripId: string): Promise<Place[]> {
+  const { data: placeRows, error: placesErr } = await supabase()
+    .from('places')
+    .select('*')
+    .eq('trip_id', tripId)
+    .or('is_stashed.is.null,is_stashed.eq.false')
+    .order('sort_order');
+
+  if (placesErr) throw placesErr;
+
+  const placeIds = (placeRows as PlaceRow[]).map((p) => p.id);
+  const hoursMap = new Map<string, OperatingHours[]>();
+
+  if (placeIds.length > 0) {
+    const { data: hoursRows, error: hoursErr } = await supabase()
+      .from('operating_hours')
+      .select('*')
+      .in('place_id', placeIds);
+
+    if (hoursErr) throw hoursErr;
+
+    for (const hoursRow of hoursRows as HoursRow[]) {
+      const list = hoursMap.get(hoursRow.place_id) ?? [];
+      list.push(hoursRowToModel(hoursRow));
+      hoursMap.set(hoursRow.place_id, list);
+    }
+  }
+
+  return (placeRows as PlaceRow[]).map((r) =>
+    placeRowToModel(r, hoursMap.get(r.id) ?? []),
+  );
+}
+
+function dedupePlaceKey(place: Place): string {
+  if (place.googlePlaceId) return `g:${place.googlePlaceId.toLowerCase()}`;
+  return `n:${place.name.trim().toLowerCase()}|a:${(place.address ?? '').trim().toLowerCase()}`;
+}
+
+function countDedupeKeyFromRow(
+  row: { google_place_id: string | null; name: string; address: string | null },
+): string {
+  if (row.google_place_id) return `g:${row.google_place_id.toLowerCase()}`;
+  return `n:${row.name.trim().toLowerCase()}|a:${(row.address ?? '').trim().toLowerCase()}`;
 }
 
 // ─── Cities (backed by the trips table) ───
@@ -278,37 +349,141 @@ export async function getPublicCityBySlug(slug: string): Promise<City | null> {
   if (!tripRow) return null;
 
   const row = tripRow as TripRow;
-  const { data: placeRows, error: placesErr } = await supabase()
+  const places = await loadPublicPlacesForTrip(row.id);
+  return tripRowToCity(row, places);
+}
+
+export async function getPublicCitySlugs(): Promise<PublicCitySlugEntry[]> {
+  const { data: tripsData, error: tripsErr } = await supabase()
+    .from('trips')
+    .select('id, city')
+    .eq('is_public', true)
+    .not('city', 'is', null);
+
+  if (tripsErr) throw tripsErr;
+  if (!tripsData || tripsData.length === 0) return [];
+
+  const tripRows = tripsData as Array<{ id: string; city: string }>;
+  const cityGroups = new Map<
+    string,
+    { cityName: string; tripIds: string[] }
+  >();
+  const tripToCityKey = new Map<string, string>();
+
+  for (const row of tripRows) {
+    const cityName = row.city.trim();
+    if (!cityName) continue;
+    const groupKey = cityName.toLowerCase();
+    const existing = cityGroups.get(groupKey);
+    if (existing) {
+      existing.tripIds.push(row.id);
+    } else {
+      cityGroups.set(groupKey, { cityName, tripIds: [row.id] });
+    }
+    tripToCityKey.set(row.id, groupKey);
+  }
+
+  const tripIds = tripRows.map((r) => r.id);
+  const { data: placeRowsData, error: placesErr } = await supabase()
     .from('places')
-    .select('*')
-    .eq('trip_id', row.id)
-    .or('is_stashed.is.null,is_stashed.eq.false')
-    .order('sort_order');
+    .select('trip_id, google_place_id, name, address, is_stashed')
+    .in('trip_id', tripIds)
+    .or('is_stashed.is.null,is_stashed.eq.false');
 
   if (placesErr) throw placesErr;
 
-  const placeIds = (placeRows as PlaceRow[]).map((p) => p.id);
-  const hoursMap = new Map<string, OperatingHours[]>();
+  const dedupeByCity = new Map<string, Set<string>>();
+  for (const cityKey of cityGroups.keys()) {
+    dedupeByCity.set(cityKey, new Set<string>());
+  }
 
-  if (placeIds.length > 0) {
-    const { data: hoursRows, error: hoursErr } = await supabase()
-      .from('operating_hours')
-      .select('*')
-      .in('place_id', placeIds);
+  for (const row of (placeRowsData ?? []) as Array<{
+    trip_id: string;
+    google_place_id: string | null;
+    name: string;
+    address: string | null;
+    is_stashed: boolean | null;
+  }>) {
+    const cityKey = tripToCityKey.get(row.trip_id);
+    if (!cityKey) continue;
+    const placeKey = countDedupeKeyFromRow(row);
+    dedupeByCity.get(cityKey)?.add(placeKey);
+  }
 
-    if (hoursErr) throw hoursErr;
+  return Array.from(cityGroups.entries())
+    .map(([cityKey, group]) => ({
+      citySlug: cityToSlug(group.cityName),
+      cityName: group.cityName,
+      placeCount: dedupeByCity.get(cityKey)?.size ?? 0,
+    }))
+    .filter((entry) => entry.placeCount >= 3)
+    .sort((a, b) => b.placeCount - a.placeCount || a.cityName.localeCompare(b.cityName));
+}
 
-    for (const hoursRow of hoursRows as HoursRow[]) {
-      const list = hoursMap.get(hoursRow.place_id) ?? [];
-      list.push(hoursRowToModel(hoursRow));
-      hoursMap.set(hoursRow.place_id, list);
+export async function getPublicPlacesForCity(
+  cityName: string,
+): Promise<PublicCityPlacesResult | null> {
+  const { data: tripRowsData, error: tripsErr } = await supabase()
+    .from('trips')
+    .select('*')
+    .eq('is_public', true)
+    .ilike('city', cityName)
+    .order('created_at', { ascending: false });
+
+  if (tripsErr) throw tripsErr;
+  if (!tripRowsData || tripRowsData.length === 0) return null;
+
+  const tripRows = tripRowsData as TripRow[];
+  const deduped = new Map<string, Place>();
+
+  for (const row of tripRows) {
+    const places = await loadPublicPlacesForTrip(row.id);
+    for (const place of places) {
+      const key = dedupePlaceKey(place);
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, place);
+        continue;
+      }
+      if (place.hours.length > existing.hours.length) {
+        deduped.set(key, place);
+      }
     }
   }
 
-  const places = (placeRows as PlaceRow[]).map((r) =>
-    placeRowToModel(r, hoursMap.get(r.id) ?? []),
-  );
-  return tripRowToCity(row, places);
+  const places = Array.from(deduped.values());
+  if (places.length === 0) return null;
+
+  const timezone =
+    tripRows.find((row) => row.timezone)?.timezone ?? undefined;
+
+  return {
+    cityName: tripRows[0].city,
+    timezone,
+    places,
+  };
+}
+
+export async function getPublicSharedListsForCity(
+  cityName: string,
+): Promise<PublicCitySharedListEntry[]> {
+  const { data: rows, error } = await supabase()
+    .from('trips')
+    .select('share_slug, created_at')
+    .eq('is_public', true)
+    .ilike('city', cityName)
+    .not('share_slug', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  if (!rows) return [];
+
+  return (rows as Array<{ share_slug: string | null; created_at: string }>)
+    .flatMap((row) =>
+      row.share_slug
+        ? [{ shareSlug: row.share_slug, createdAt: row.created_at }]
+        : [],
+    );
 }
 
 export interface PublicCitySitemapEntry {
