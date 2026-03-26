@@ -166,6 +166,8 @@ export function WeeklyGrid({ places, currentTime, timezone, filter = 'all' }: We
               >
                 <a
                   href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={(event) => {
                     if (place.googlePlaceId) return;
                     handleGoogleMapsTap(event, mapsUrl, mapsAppUrl);
