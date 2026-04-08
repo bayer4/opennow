@@ -4,6 +4,8 @@ A travel app that shows which saved places are open right now, closing soon, or 
 
 **Live at [getopennow.com](https://getopennow.com)**
 
+<img src="./public/screenshot.png" alt="OpenNow — weekly schedule view" width="500" />
+
 ## Why I built it
 
 My girlfriend was visiting me in Philly for four days, and we had a long list of spots we wanted to eat at. Picking places was easy. Figuring out what was actually open when we had time was the hard part.
